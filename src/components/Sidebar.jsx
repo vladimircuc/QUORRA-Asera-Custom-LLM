@@ -27,14 +27,14 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="sidebar w-64 bg-[#1A1D23] text-white flex flex-col p-4 border-r-4 border-[#3AB3FF] min-w-[100px] relative">
+    <aside className="sidebar w-64 bg-main text-white flex flex-col p-4 border-r-4 border-[#3AB3FF] min-w-[100px] relative">
     
       {/* Inside of my navbar/ may make it expandable */}
-      <button className="flex bg-gray-700 hover:bg-gray-600 py-2 px-3 rounded text-center text-sm my-5 justify-between">
+      <button className="flex bg-diff highlight py-4 px-3 rounded text-center text-sm my-5 justify-between">
         <p>Create a New Chat</p>
         <p>+</p>
       </button>
-      <div className="primary-bg border-t-2 border-[#3AB3FF] mb-5"></div>
+      <div className="bg-diff border-t-2 border-[#3AB3FF] mb-5"></div>
 
       {filler.map((folder) => (
         <Folder key={folder.id} folder={folder} />

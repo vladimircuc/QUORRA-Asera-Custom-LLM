@@ -5,11 +5,33 @@
 /* May end up using them if we want a light mode button though, so I'm just going to leave them */
 :root {
   --primary: #3AB3FF;
-  --navy: #1A1D23;
+  --slate: #151515;
+  --black: #0a0a0a;
 }
 
-.navy-bg{
-  background-color: var(--navy);
+.bg-main{
+  background-color: var(--black);
+}
+
+.bg-diff{
+  background-color: var(--slate);
+  border-radius: 9px;
+}
+
+.highlight{
+  border: 1px solid var(--slate);
+}
+
+.rounded{
+  border-radius: 9px;
+}
+
+.highlight:hover{
+  border-color: var(--primary);
+}
+
+.bg-accent{
+  background-color: var(--primary);
 }
 
 .primary-text{
@@ -27,7 +49,7 @@
   right: 0; /* or left: 0 */
   width: 4rem;
   height: 4rem;
-  background: var(--navy);
+  background: var(--black);
   border: 4px solid var(--primary);
   border-radius: 50%;
   transform: translate(55%, -50%);

@@ -14,16 +14,16 @@ export default function ChatWindow() {
   };
 
   return (
-    <main className="flex-1 flex flex-col bg-[#1A1D23] text-white">
+    <main className="flex-1 flex px-10 pt-10 flex-col bg-main text-white">
       {/* Message Feed */}
-      <div className="flex-1 overflow-y-auto p-6 m-auto space-y-4 text-center">
+      <div className="flex-1 overflow-y-auto p-3 space-y-4 flex flex-col">
         {messages.map((msg, idx) => (
           <ChatMessage key={idx} role={msg.role} content={msg.content} />
         ))}
       </div>
 
       {/* Input Bar */}
-      <ChatInput onSend={handleSend} />
+      <ChatInput onSend={handleSend}/>
     </main>
   );
 }
