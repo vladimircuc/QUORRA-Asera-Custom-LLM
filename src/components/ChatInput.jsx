@@ -11,7 +11,7 @@ export default function ChatInput({ onSend }) {
   };
 
   return (
-    <div className="p-4 bg-gray-900 border-t border-gray-700">
+    <div className="p-4 bg-[#1A1D23]">
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -23,8 +23,7 @@ export default function ChatInput({ onSend }) {
         />
         <button
           onClick={handleSubmit}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-        >
+          className="bg-[#2581C4] hover:bg-[#3AB3FF] text-white px-4 py-2 rounded">
           Send
         </button>
       </div>
