@@ -11,11 +11,10 @@ export default function ChatInput({ onSend }) {
   };
 
   return (
-    <div className="p-4 bg-main flex justify-center">
       <div className="flex items-center gap-2 w-full max-w-4xl">
         <input
           type="text"
-          className="flex-1 p-3 rounded bg-diff text-white placeholder-gray-400 outline-none"
+          className="flex-1 min-w-0 p-3 rounded bg-diff text-white placeholder-gray-400 outline-none"
           placeholder="Send a message..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -23,11 +22,10 @@ export default function ChatInput({ onSend }) {
         />
         <button
           onClick={handleSubmit}
-          className="bg-accent hover:bg-[#3AB3FF] text-white px-11 py-3 rounded"
+          className="bg-accent hover:bg-[#3AB3FF] text-white px-6 sm:px-11 py-3 rounded shrink-0"
         >
           Send
         </button>
       </div>
-    </div>
   );
 }

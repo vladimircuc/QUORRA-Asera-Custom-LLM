@@ -3,10 +3,10 @@ export default function ChatMessage({ role, content }) {
 
   return (
     <div
-      className={`py-4 px-9 rounded-lg ${
+      className={`py-4 px-9 rounded-lg max-w-[80%] whitespace-pre-wrap break-words ${
         isUser
-          ? 'w-2xl bg-accent text-white self-end ml-auto'
-          : 'w-3xl bg-diff text-white self-start mr-auto'
+          ? 'bg-accent text-white self-end ml-auto'
+          : 'bg-diff text-white self-start mr-auto'
       }`}
     >
       {content}

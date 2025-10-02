@@ -7,7 +7,7 @@ export default function ChatPage() {
   return (
     <div className="flex flex-col h-screen navy-bg">
       <Navbar />
-      <div className="flex flex-1 w-screen text-white">
+      <div className="flex flex-1 w-full text-white">
         <Sidebar />
         <ChatWindow />
       </div>

@@ -5,7 +5,7 @@ import ChatInput from './ChatInput';
 
 export default function ChatWindow() {
   const [messages, setMessages] = useState([
-    { role: 'system', content: 'How can I help you today?' },
+    { role: 'system', content: 'How can I help you today? fewf fwe fwe ewf  ewf we fw ef w e fw ef wef we fwe fw e ew wfe fwe f we f  ggggggggggggggggggggggggg' },
   ]);
 
   const handleSend = (input) => {
@@ -14,7 +14,7 @@ export default function ChatWindow() {
   };
 
   return (
-    <main className="flex-1 flex px-10 pt-10 flex-col bg-main text-white">
+    <main className="flex flex-1 flex-col p-6 bg-main text-white">
       {/* Message Feed */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4 flex flex-col">
         {messages.map((msg, idx) => (
