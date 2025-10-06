@@ -5,9 +5,9 @@ import Navbar from '../components/Navbar';
 
 export default function ChatPage() {
   return (
-    <div className="flex flex-col h-screen navy-bg">
+    <div className="flex flex-col h-screen">
       <Navbar />
-      <div className="flex flex-1 w-full text-white">
+      <div className="flex flex-1 w-full">
         <Sidebar />
         <ChatWindow />
       </div>

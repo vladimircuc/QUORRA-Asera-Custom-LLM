@@ -5,8 +5,8 @@ export default function ChatMessage({ role, content }) {
     <div
       className={`py-4 px-9 rounded-lg max-w-[80%] whitespace-pre-wrap break-words ${
         isUser
-          ? 'bg-accent text-white self-end ml-auto'
-          : 'bg-diff text-white self-start mr-auto'
+          ? 'bg-accent white-text self-end ml-auto'
+          : 'bg-diff white-text self-start mr-auto'
       }`}
     >
       {content}

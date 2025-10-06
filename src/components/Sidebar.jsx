@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Folder from "./Folder";
+import Mode from "./mode";
 
 export default function Sidebar() {
 
@@ -26,9 +27,17 @@ export default function Sidebar() {
     { id: 8, name: "Filler Conversations that tests if it breaks when longer text", children: [] },
   ];
 
+    const [mode, setMode] = useState("light");
+
+    useEffect(() => {
+      document.documentElement.setAttribute("theme", mode);
+    }, [mode]);
+
   return (
-    <aside className="sidebar w-64 bg-main text-white flex flex-col p-4 border-r-4 border-[#3AB3FF] min-w-[100px] relative">
-    
+    <aside className="sidebar w-64 bg-main white-text flex flex-col p-4 border-r-4 border-[#3AB3FF] min-w-[100px] relative">
+    <div className="circle">
+      <Mode mode={mode} setMode={setMode}/>
+    </div>
       {/* Inside of my navbar/ may make it expandable */}
       <button className="flex bg-diff highlight py-4 px-3 rounded text-center text-sm my-5 justify-between">
         <p>Create a New Chat</p>
