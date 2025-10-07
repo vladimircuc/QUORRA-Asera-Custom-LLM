@@ -1,3 +1,6 @@
-notion-client
+fastapi
+uvicorn
 python-dotenv
-openai
+notion-client
+supabase
+pydantic
