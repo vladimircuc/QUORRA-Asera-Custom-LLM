@@ -1,25 +1,37 @@
-import { useState } from "react";
+import React from "react";
 
-export default function Folder({ folder }) {
-  const [open, setOpen] = useState(false);
+export default function Folder({ selectedClient, filler }) {
+
+  const client = filler.find((c) => c.name.toLowerCase() === selectedClient.toLowerCase());
+  
+  if (!client) {
+    return <p>Select a client to view chats.</p>
+  }
+
 
   return (
-    <div className="">
-      <div
-        className="cursor-pointer select-none flex items-center p-3 highlight text-sm mb-2 rounded bg-diff"
-        onClick={() => setOpen(!open)}>
-        {/* May want to add folder icons */}
-        <p className="ml-2">{folder.name}</p>
-      </div>
-    
-    {/* Need to add something in case text is too large */}
-      {open && folder.children && (
-        <div className="ml-5">
-          {folder.children.map((child) => (
-            <Folder key={child.id} folder={child} />
+    <div className="mt-4">
+      {client.chats.length === 0 && (
+        <p className="text-gray-400">No chats yet for {selectedClient}.</p>
+      )}
+
+      {client.chats.length > 0 && (
+        <div className="space-y-3">
+          {client.chats.map((chat, index) => (
+            <div
+              key={index}
+              className="flex flex-col bg-diff highlight p-3 rounded text-sm my-2 justify-between"
+            >
+              <div>
+                <p className="tags">{selectedClient}</p>
+              </div>
+              <p>{chat}</p>
+            </div>
           ))}
         </div>
       )}
     </div>
+
+
   );
 }

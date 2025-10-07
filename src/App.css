@@ -7,11 +7,13 @@
   --primary: #3AB3FF;
   --slate: #151515;
   --black: #0a0a0a;
+  --white: white;
 }
 
 [theme="dark"] {
   --slate: white;
   --black: #EAEAEA;
+  --white: #0a0a0a;
 }
   [theme="dark"] .highlight:hover{
       border-color: #3AB3FF;
@@ -20,10 +22,18 @@
     color: black;
   }
 
+  [theme="dark"] .logo{
+    background-color: var(--primary);
+    border-radius:10px;
+  }
 
 .bg-main{
   background-color: var(--black);
-  transition: background-color 0.4s ease-in-out;
+  transition: background-color 0.4s ease;
+}
+
+.logo{
+  transition: background-color 0.4s ease;
 }
 
 .white-text{
@@ -32,7 +42,7 @@
 
 .bg-diff{
   background-color: var(--slate);
-  transition: background-color 0.4s ease;
+  transition: background-color 0.4s ease-in-out;
 }
 
 .bg-prim{
@@ -75,6 +85,16 @@
   position: relative;
 }
 
+.tags{
+  color: var(--black);
+  font-size: xx-small;
+  font-weight: 500;
+  padding: 4px 6px;
+  background-color: var(--primary);
+  display: inline-block;
+  border-radius: 2px;
+}
+
 .circle{
   position: absolute;
   top: 0;
@@ -85,4 +105,5 @@
   border: 4px solid var(--primary);
   border-radius: 50%;
   transform: translate(55%, -50%);
+  transition: background-color 0.4s ease;
 }
