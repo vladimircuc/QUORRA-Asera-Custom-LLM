@@ -6,10 +6,10 @@ import ClientDropdown from "./ClientDropdown";
 export default function Sidebar() {
 
   const filler = [
-    { id: 1, name: "pickleball", chats: ["question about company", "pickleball chat"] },
-    { id: 2, name: "testing", chats: ["testing company chat", "testing chat"] },
-    { id: 3, name: "Barney", chats: ["Barney chat"] },
-    { id: 4, name: "fsc", chats: [] },
+    { id: 1, name: "Asera", chats: ["question about company", "asera chat"] },
+    { id: 2, name: "AMI Mobile Marine", chats: ["testing company chat", "testing chat"] },
+    { id: 3, name: "Child Care Leadership Lab", chats: ["childcare leadership chat chat"] },
+    { id: 4, name: "Find-A-Sitter", chats: [] },
   ];
 
   const [selectedClient, setSelectedClient] = useState("");
