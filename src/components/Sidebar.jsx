@@ -3,7 +3,7 @@ import Folder from "./Folder";
 import Mode from "./mode";
 import ClientDropdown from "./ClientDropdown";
 
-export default function Sidebar() {
+export default function Sidebar({clients, selectedClient, setSelectedClient}) {
 
   const filler = [
     { id: 1, name: "Asera", chats: ["question about company", "asera chat"] },
@@ -12,7 +12,6 @@ export default function Sidebar() {
     { id: 4, name: "Find-A-Sitter", chats: [] },
   ];
 
-  const [selectedClient, setSelectedClient] = useState("");
 
     const [mode, setMode] = useState("light");
 
@@ -25,7 +24,7 @@ export default function Sidebar() {
     <div className="circle">
       <Mode mode={mode} setMode={setMode}/>
     </div>
-    <ClientDropdown onSelectClient={setSelectedClient}/>
+    <ClientDropdown setSelectedClient={setSelectedClient} clients = {clients}/>
       
     <div className="bg-diff border-t-2 border-[#3AB3FF] mb-5"></div>
 

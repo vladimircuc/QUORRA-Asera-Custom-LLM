@@ -2,10 +2,14 @@ import React from "react";
 
 export default function Folder({ selectedClient, filler }) {
 
+  if (!selectedClient) {
+    return <p className="text-center">No clients selected</p>
+  }
+
   const client = filler.find((c) => c.name.toLowerCase() === selectedClient.name?.toLowerCase());
 
   if (!client) {
-    return <p>Select a client to view chats.</p>
+    return <p className="text-center">Start having coversations by creating a new chat</p>
   }
 
   const statusColor = () => {
@@ -28,10 +32,6 @@ export default function Folder({ selectedClient, filler }) {
 
   return (
     <div className="mt-4">
-      {client.chats.length === 0 && (
-        <p className="text-gray-400">No chats yet for {selectedClient.name}.</p>
-      )}
-
       {client.chats.length > 0 && (
         <div className="space-y-3">
           {client.chats.map((chat, index) => (
