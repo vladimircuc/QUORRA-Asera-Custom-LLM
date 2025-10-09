@@ -4,27 +4,23 @@ from services.notion_service import refresh_clients_from_notion
 
 router = APIRouter()
 
-@router.get("/clients")
+@router.get("/")
 def get_clients():
     """Return all clients except churned, prospect, or null statuses."""
-    # Fetch all clients first
     result = (
         supabase.table("clients")
         .select("id, name, status")
         .order("name", desc=False)
         .execute()
     )
-
-    # Filter in Python since Supabase .neq() doesn’t handle null elegantly
     filtered = [
-        c
-        for c in result.data
+        c for c in result.data
         if c.get("status") not in (None, "churned", "prospect")
     ]
-
     return filtered
 
-@router.post("/clients/refresh")
+
+@router.post("/refresh")
 def refresh_clients():
     """Refresh clients from Notion."""
     try:

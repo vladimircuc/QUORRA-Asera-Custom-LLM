@@ -51,13 +51,20 @@ def fetch_clients_from_notion():
         for row in response.get("results", []):
             props = row.get("properties", {})
 
-            # Use safe .get() with defaults for each property
+            # Basic text fields
             name = _extract_text(props.get("Account name", {}).get("title", []))
+
+            # Description (NEW)
+            desc_rich = props.get("Description", {}).get("rich_text", [])
+            description = "".join(t.get("plain_text", "") for t in desc_rich) if desc_rich else None
+
+            # Account Manager
             account_manager = ""
             if isinstance(props.get("Account manager", {}).get("people"), list):
                 if props["Account manager"]["people"]:
                     account_manager = props["Account manager"]["people"][0].get("name", "")
-
+            
+            # Select fields
             status = (
                 props.get("Status", {}).get("select", {}).get("name")
                 if props.get("Status") and props["Status"].get("select")
@@ -70,18 +77,21 @@ def fetch_clients_from_notion():
                 else None
             )
 
+            # Email
             contact_email = (
                 props.get("Contact email", {}).get("email")
                 if props.get("Contact email")
                 else None
             )
 
+            # Multi-select
             products = _extract_multi_select(
                 props.get("Products/Services", {}).get("multi_select", [])
                 if props.get("Products/Services")
                 else []
             )
 
+            # Date
             service_end_date = _extract_date(
                 props.get("Service End-Date", {}).get("date")
                 if props.get("Service End-Date")
@@ -91,6 +101,7 @@ def fetch_clients_from_notion():
             clients.append({
                 "notion_page_id": row.get("id"),
                 "name": name,
+                "description": description,  # ← NEW FIELD
                 "account_manager": account_manager,
                 "status": status,
                 "priority": priority,
@@ -113,7 +124,7 @@ def refresh_clients_from_notion():
     notion_clients = fetch_clients_from_notion()
     sb_clients = (
         supabase.table("clients")
-        .select("id, notion_page_id, name, status, account_manager, priority, contact_email, products, service_end_date")
+        .select("id, notion_page_id, name, description, status, account_manager, priority, contact_email, products, service_end_date")
         .execute()
         .data
     )
@@ -128,8 +139,8 @@ def refresh_clients_from_notion():
             existing = sb_by_notion[notion_id]
             updates = {}
 
-            # only update if value changed and new value is not None
-            for field in ["name", "status", "account_manager", "priority", "contact_email", "products", "service_end_date"]:
+            # Update fields only if changed and not None
+            for field in ["name", "description", "status", "account_manager", "priority", "contact_email", "products", "service_end_date"]:
                 new_val = client.get(field)
                 if new_val is not None and new_val != existing.get(field):
                     updates[field] = new_val
@@ -138,10 +149,11 @@ def refresh_clients_from_notion():
                 supabase.table("clients").update(updates).eq("notion_page_id", notion_id).execute()
                 summary["updated"] += 1
         else:
-            # insert new client
+            # Insert new client
             insert_data = {
                 "notion_page_id": notion_id,
                 "name": client.get("name"),
+                "description": client.get("description"),
                 "status": (client.get("status") or "active").lower(),
                 "account_manager": client.get("account_manager"),
                 "priority": client.get("priority"),
@@ -152,13 +164,10 @@ def refresh_clients_from_notion():
             supabase.table("clients").insert(insert_data).execute()
             summary["added"] += 1
 
-    # mark missing clients as inactive
+    # Mark clients missing from Notion as inactive
     for client in sb_clients:
         if client.get("notion_page_id") not in notion_ids and client.get("status") != "inactive":
             supabase.table("clients").update({"status": "inactive"}).eq("notion_page_id", client["notion_page_id"]).execute()
             summary["inactivated"] += 1
 
     return summary
-
-
-

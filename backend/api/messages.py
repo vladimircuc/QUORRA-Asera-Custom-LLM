@@ -6,37 +6,57 @@ from pydantic import BaseModel
 
 router = APIRouter()
 
+DUMMY_USER_ID = "11111111-2222-3333-4444-555555555555"
+
+# ------------------------------
+# MODELS
+# ------------------------------
 class MessageCreate(BaseModel):
     conversation_id: str
-    user_id: str
-    role: str   # "user" or "assistant"
-    content: dict  # JSON object
-    tokens: int | None = None
+    content: str
+    role: str | None = "user"  # default "user"
+    user_id: str | None = None
+
+
+# ------------------------------
+# ENDPOINTS
+# ------------------------------
 
 @router.post("/messages")
 def create_message(data: MessageCreate):
-    result = supabase.table("messages").insert({
+    """Insert a new message into the conversation."""
+    user_id = data.user_id or DUMMY_USER_ID
+
+    message_data = {
         "id": str(uuid4()),
         "conversation_id": data.conversation_id,
-        "user_id": data.user_id,
-        "role": data.role,
-        "content": data.content,
-        "tokens": data.tokens,
+        "user_id": user_id,
+        "role": data.role or "user",
+        "content": {"text": data.content},
+        "tokens": None,
         "created_at": datetime.utcnow()
-    }).execute()
+    }
+
+    result = supabase.table("messages").insert(message_data).execute()
 
     if not result.data:
         raise HTTPException(status_code=400, detail="Failed to insert message")
 
-    return result.data[0]
+    return {"status": "success", "message": result.data[0]}
 
 
 @router.get("/messages/{conversation_id}")
 def get_messages(conversation_id: str):
-    result = supabase.table("messages") \
-        .select("*") \
-        .eq("conversation_id", conversation_id) \
-        .order("created_at", asc=True) \
+    """Fetch all messages for a specific conversation."""
+    result = (
+        supabase.table("messages")
+        .select("*")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", asc=True)
         .execute()
+    )
 
-    return result.data
+    if not result.data:
+        return {"messages": []}
+
+    return {"total": len(result.data), "messages": result.data}
