@@ -6,11 +6,22 @@ from supabase_client import supabase
 from api.clients import router as clients_router
 from api.conversations import router as conversations_router
 from api.messages import router as messages_router
+from fastapi.middleware.cors import CORSMiddleware
 
 # ------------------------------
 # APP INITIALIZATION
 # ------------------------------
 app = FastAPI(title="QUORRA LLM API")
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # or ["*"] for testing
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include routers with optional prefixes
 app.include_router(clients_router, prefix="/clients", tags=["Clients"])
