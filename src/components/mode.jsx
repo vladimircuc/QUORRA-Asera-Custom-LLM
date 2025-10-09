@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function mode({ mode, setMode}) {
+export default function mode({mode, setMode}) {
 
   return (
     <button className="cursor-pointer" onClick={() => 

@@ -3,7 +3,7 @@ import Folder from "./Folder";
 import Mode from "./mode";
 import ClientDropdown from "./ClientDropdown";
 
-export default function Sidebar({clients, selectedClient, setSelectedClient}) {
+export default function Sidebar({clients, selectedClient, setSelectedClient, mode, setMode}) {
 
   const filler = [
     { id: 1, name: "Asera", chats: ["question about company", "asera chat"] },
@@ -11,13 +11,6 @@ export default function Sidebar({clients, selectedClient, setSelectedClient}) {
     { id: 3, name: "Child Care Leadership Lab", chats: ["childcare leadership chat chat"] },
     { id: 4, name: "Find-A-Sitter", chats: [] },
   ];
-
-
-    const [mode, setMode] = useState("light");
-
-    useEffect(() => {
-      document.documentElement.setAttribute("theme", mode);
-    }, [mode]);
 
   return (
     <aside className="sidebar w-64 bg-main white-text flex flex-col p-4 border-r-4 border-[#3AB3FF] min-w-[100px] relative">

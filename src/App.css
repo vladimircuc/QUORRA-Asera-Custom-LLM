@@ -24,7 +24,6 @@
 
   [theme="dark"] .logo{
     background-color: var(--primary);
-    border-radius:10px;
   }
 
 .bg-main{
@@ -34,6 +33,7 @@
 
 .logo{
   transition: background-color 0.4s ease;
+  border-radius:10px;
 }
 
 .white-text{
