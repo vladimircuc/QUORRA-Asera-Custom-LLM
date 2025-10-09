@@ -25,12 +25,6 @@ export default function Sidebar() {
     <div className="circle">
       <Mode mode={mode} setMode={setMode}/>
     </div>
-    <button className="flex bg-diff highlight py-4 px-3 rounded text-center text-sm my-5 justify-between">
-      <p>Create a New Chat</p>
-      <p>+</p>
-    </button>
-    <div className="bg-diff border-t-2 border-[#3AB3FF] mb-5"></div>
-
     <ClientDropdown onSelectClient={setSelectedClient}/>
       
     <div className="bg-diff border-t-2 border-[#3AB3FF] mb-5"></div>
