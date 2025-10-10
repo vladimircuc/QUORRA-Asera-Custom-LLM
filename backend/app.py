@@ -26,29 +26,3 @@ app.include_router(clients_router, prefix="/clients", tags=["Clients"])
 app.include_router(conversations_router, prefix="/conversations", tags=["Conversations"])
 app.include_router(messages_router, prefix="/messages", tags=["Messages"])
 
-# ------------------------------
-# TEMP TEST ROUTES (optional)
-# ------------------------------
-
-@app.get("/clients/all")
-def get_clients():
-    """Fetch all clients (testing route)."""
-    result = supabase.table("clients").select("*").execute()
-    return result.data
-
-
-@app.post("/clients/seed")
-def seed_client():
-    """Insert a dummy client for testing."""
-    result = (
-        supabase.table("clients")
-        .insert({
-            "name": "Test Client",
-            "notion_page_id": "abc123",
-            "industry": "AI",
-            "plan_tier": "pro",
-            "timezone": "US/Eastern",
-        })
-        .execute()
-    )
-    return result.data

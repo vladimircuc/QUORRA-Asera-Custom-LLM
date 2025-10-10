@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from supabase_client import supabase
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -25,7 +25,7 @@ def create_conversation(data: ConversationCreate):
         "user_id": user_id,
         "client_id": client_id,
         "title": f"Conversation with client {client_id}",
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
 
     result = supabase.table("conversations").insert(new_conversation).execute()
