@@ -106,3 +106,8 @@
   transform: translate(55%, -50%);
   transition: background-color 0.4s ease;
 }
+
+::-webkit-scrollbar {
+  width: 2px; /* Width for vertical scrollbars */
+  height: 2px; /* Height for horizontal scrollbars */
+}

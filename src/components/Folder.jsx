@@ -1,20 +1,14 @@
 import React from "react";
 
-export default function Folder({ selectedClient, filler }) {
+export default function Folder({ selectedClient, conversation }) {
 
-  if (!selectedClient) {
-    return <p className="text-center">No clients selected</p>
-  }
 
-  const client = filler.find((c) => c.name.toLowerCase() === selectedClient.name?.toLowerCase());
-
-  if (!client) {
+  if (!conversation || conversation.length === 0) {
     return <p className="text-center">Start having coversations by creating a new chat</p>
   }
 
-  const statusColor = () => {
-    if (!selectedClient) return '';
-    switch (selectedClient.status.toLowerCase()) {
+  const statusColor = (status) => {
+    switch (status?.toLowerCase()) {
       case ('active'):
         console.log('1');
         return 'bg-green-500';
@@ -32,24 +26,22 @@ export default function Folder({ selectedClient, filler }) {
 
   return (
     <div className="mt-4">
-      {client.chats.length > 0 && (
         <div className="space-y-3">
-          {client.chats.map((chat, index) => (
+          {conversation.map((chat, index) => (
             <div
               key={index}
               className="flex flex-col bg-diff highlight p-3 rounded text-sm my-2 justify-between"
             >
               <div>
                 <div className="flex flex-row gap-2">
-                  <p className="tags bg-[#3AB3FF]">{selectedClient.name}</p>
-                  <p className={`tags ${statusColor()}`}>{selectedClient.status}</p>
+                  <p className="tags bg-[#3AB3FF]">{chat.client_name}</p>
+                  <p className={`tags ${statusColor(chat.client_status)}`}>{chat.client_status}</p>
                 </div>
               </div>
-              <p>{chat}</p>
+              <p>{chat.title}</p>
             </div>
           ))}
         </div>
-      )}
     </div>
 
 
