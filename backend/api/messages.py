@@ -4,6 +4,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from services.gpt_service import generate_gpt_reply
+from services.summarization_service import maybe_update_summary  
 
 
 router = APIRouter()
@@ -29,7 +30,7 @@ def create_message(data: MessageCreate):
     """Insert a user message, load client context, and generate GPT reply."""
     user_id = data.user_id or DUMMY_USER_ID
 
-    # 1️⃣ Save the user message -------------------------------------------------
+    # 1️⃣ Save the user message
     user_msg = {
         "id": str(uuid4()),
         "conversation_id": data.conversation_id,
@@ -41,7 +42,7 @@ def create_message(data: MessageCreate):
     }
     supabase.table("messages").insert(user_msg).execute()
 
-    # 2️⃣ Get the client linked to this conversation ---------------------------
+    # 2️⃣ Fetch client info
     convo_result = (
         supabase.table("conversations")
         .select("client_id")
@@ -64,24 +65,34 @@ def create_message(data: MessageCreate):
 
     client = client_result.data[0]
 
-    # 3️⃣ Build a client context summary for GPT -------------------------------
+    # 3️⃣ Build client context
     products_list = ", ".join(client.get("products") or [])
     client_context = f"""
-        This chat is about the following client:
+        This conversation is about the following client:
 
-        - **Name:** {client.get('name')}
-        - **Status:** {client.get('status')}
-        - **Account Manager:** {client.get('account_manager')}
-        - **Priority:** {client.get('priority')}
-        - **Contact Email:** {client.get('contact_email')}
-        - **Products:** {products_list}
-        - **Service End Date:** {client.get('service_end_date')}
-        - **Description:** {client.get('description')}
+        - Name: {client.get('name')}
+        - Status: {client.get('status')}
+        - Account Manager: {client.get('account_manager')}
+        - Priority: {client.get('priority')}
+        - Contact Email: {client.get('contact_email')}
+        - Products: {products_list}
+        - Service End Date: {client.get('service_end_date')}
+        - Description: {client.get('description')}
 
-        Always keep this information in mind when answering. Never talk about other clients.
+        Always keep this information in mind when answering.
+        Never discuss other clients.
     """.strip()
 
-    # 4️⃣ Fetch the last few messages in this conversation ---------------------
+    # 4️⃣ Load summary if it exists
+    summary_result = (
+        supabase.table("conversation_summary")
+        .select("summary")
+        .eq("conversation_id", data.conversation_id)
+        .execute()
+    )
+    summary_text = summary_result.data[0]["summary"] if summary_result.data else None
+
+    # 5️⃣ Fetch last few messages
     history_result = (
         supabase.table("messages")
         .select("role, content")
@@ -91,24 +102,38 @@ def create_message(data: MessageCreate):
         .execute()
     )
 
-    history = [
-        {"role": m["role"], "content": m["content"]["text"]}
-        for m in history_result.data
+    # 6️⃣ Assemble GPT input in correct order
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are QUORRA, the Asera AI assistant. "
+                "Be concise, smart, and aware of past messages."
+            ),
+        },
+        {"role": "system", "content": client_context},
     ]
 
-    # Prepend a system message with the client context
-    history.insert(0, {
-        "role": "system",
-        "content": f"You are QUORRA, the Asera AI assistant.\n{client_context}"
-    })
+    if summary_text:
+        messages.append(
+            {
+                "role": "system",
+                "content": f"Summary of previous conversation:\n{summary_text}",
+            }
+        )
 
-    # 5️⃣ Generate GPT reply ---------------------------------------------------
+    for m in history_result.data:
+        messages.append({"role": m["role"], "content": m["content"]["text"]})
+
+    messages.append({"role": "user", "content": data.content})
+
+    # 7️⃣ Generate GPT reply
     try:
-        assistant_text = generate_gpt_reply(history)
+        assistant_text = generate_gpt_reply(messages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GPT generation failed: {str(e)}")
 
-    # 6️⃣ Save assistant reply -------------------------------------------------
+    # 8️⃣ Save assistant reply
     assistant_msg = {
         "id": str(uuid4()),
         "conversation_id": data.conversation_id,
@@ -120,16 +145,17 @@ def create_message(data: MessageCreate):
     }
     supabase.table("messages").insert(assistant_msg).execute()
 
-    # 7️⃣ Return combined result ----------------------------------------------
+    # 9️⃣ Update summary in the background
+    try:
+        maybe_update_summary(data.conversation_id)
+    except Exception as e:
+        print(f"⚠️ Summary update failed: {e}")
+
+    # 🔟 Return reply
     return {
         "status": "success",
-        "message": {
-            "role": "assistant",
-            "content": assistant_text
-        },
-        "client": {
-            "name": client.get("name")
-        }
+        "message": {"role": "assistant", "content": assistant_text},
+        "client": {"name": client.get("name")},
     }
 
 
