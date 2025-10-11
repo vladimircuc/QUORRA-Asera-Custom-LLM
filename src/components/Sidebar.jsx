@@ -36,8 +36,9 @@ useEffect(() => {
       
     <div className="bg-diff border-t-2 border-[#3AB3FF] mb-5"></div>
 
-    <Folder selectedClient={selectedClient} conversation={conversation} />
-
+    <div className="h-125 overflow-y-auto">
+      <Folder selectedClient={selectedClient} conversation={conversation} />
+    </div>
       {/* Add conversation list later */}
     </aside>
   );
