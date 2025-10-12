@@ -9,7 +9,7 @@ export default function ChatMessage({ role, content }) {
           : 'bg-diff white-text self-start mr-auto'
       }`}
     >
-      {content}
+      {content.text}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Folder({ selectedClient, conversation }) {
+export default function Folder({ conversation, onSelectedConversation }) {
 
 
   if (!conversation || conversation.length === 0) {
@@ -27,10 +27,11 @@ export default function Folder({ selectedClient, conversation }) {
   return (
     <div className="mt-4">
         <div className="space-y-3">
-          {conversation.map((chat, index) => (
+          {conversation.map((chat) => (
             <div
-              key={index}
-              className="flex flex-col bg-diff highlight p-3 rounded text-sm my-2 justify-between"
+              key={chat.id}
+              onClick={() => onSelectedConversation(chat)}
+              className="flex flex-col bg-diff highlight p-3 rounded text-sm my-2 justify-between cursor-pointer"
             >
               <div>
                 <div className="flex flex-row gap-2">

@@ -10,6 +10,8 @@ export default function ChatPage({mode, setMode}) {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState();
   const [allConversations, setAllConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+
 
 
 
@@ -35,6 +37,12 @@ export default function ChatPage({mode, setMode}) {
   }, []);
 
 
+  const handleConversationClick = (conversation) => {
+    console.log("This is the conversation being sent");
+    console.log({conversation})
+    setSelectedConversation(conversation);
+  }
+
   return (
     <div className="flex flex-col h-screen">
       <Navbar />
@@ -45,8 +53,9 @@ export default function ChatPage({mode, setMode}) {
         mode={mode} 
         setMode={setMode} 
         allConversations = {allConversations}
+        onSelectedConversation = {handleConversationClick}
         />
-        <ChatWindow selectedClient={selectedClient}/>
+        <ChatWindow selectedConversation={selectedConversation}/>
       </div>
       
     </div>
