@@ -20,6 +20,7 @@ export default function ChatWindow({ selectedConversation }) {
       const data = await response.json();
       console.log("Message", data);
       setMessages(Array.isArray(data.messages) ? data.messages : []);
+      console.log("Fetched Messages:", data.messages);
       }catch (error) {
         console.error(error);
         setMessages([]);
@@ -29,10 +30,37 @@ export default function ChatWindow({ selectedConversation }) {
     fetchMessages();
   },[selectedConversation]);
 
-  const handleSend = (input) => {
-    if (!input.trim()) return;
-    setMessages([...messages, { role: 'user', content: input }]);
-  };
+const handleSend = async (input) => {
+  if (!input.trim() || !selectedConversation) return;
+
+  setMessages(prev => [
+    ...prev,
+    { role: 'user', content: { text: input } }
+  ]);
+
+  try {
+    const res = await fetch("http://127.0.0.1:8000/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversation_id: selectedConversation.id,
+        user_id: "11111111-2222-3333-4444-555555555555",
+        content: input,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data?.message?.content) {
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: { text: data.message.content } }
+      ]);
+    }
+  } catch (err) {
+    console.error("Error sending message:", err);
+  }
+};
 
   if (!selectedConversation){
     return <p className='bg-main flex-1 text-center pt-20 p-4 white-text'>Please select or create a conversation to view</p>

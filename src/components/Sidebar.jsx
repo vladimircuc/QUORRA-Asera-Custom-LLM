@@ -3,7 +3,7 @@ import Folder from "./Folder";
 import Mode from "./mode";
 import ClientDropdown from "./ClientDropdown";
 
-export default function Sidebar({clients, selectedClient, setSelectedClient, mode, setMode, allConversations, onSelectedConversation}) {
+export default function Sidebar({clients, selectedClient, setSelectedClient, mode, setMode, allConversations, onSelectedConversation, onNewChatClick}) {
 
   // Conversation is either allConversations or filtered
   // based on whether a client has been chosen or not
@@ -42,6 +42,11 @@ export default function Sidebar({clients, selectedClient, setSelectedClient, mod
     <div className="bg-diff border-t-2 border-[#3AB3FF] mb-5"></div>
 
     <div className="h-125 overflow-y-auto">
+      <button
+        onClick={onNewChatClick}
+        className="bg-diff highlight rounded px-4 py-2 text-sm"
+      >+ New Chat</button>
+
       <Folder conversation={conversation} onSelectedConversation={onSelectedConversation}/>
     </div>
       {/* Add conversation list later */}
