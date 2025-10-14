@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 from services.gpt_service import generate_gpt_reply
 from services.summarization_service import maybe_update_summary  
+from services.title_generator import generate_conversation_title
+from services.summarization_service import count_tokens
 
 
 router = APIRouter()
@@ -37,11 +39,27 @@ def create_message(data: MessageCreate):
         "user_id": user_id,
         "role": "user",
         "content": {"text": data.content},
-        "tokens": None,
+        "tokens": count_tokens(data.content),  # ✅ calculate real token count
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     supabase.table("messages").insert(user_msg).execute()
+    '''
+    msg_count = (
+        supabase.table("messages")
+        .select("id", count="exact")
+        .eq("conversation_id", data.conversation_id)
+        .execute()
+        .count
+    )
 
+    if msg_count == 1 and data.role == "user":
+        try:
+            title = generate_conversation_title(data.content)
+            supabase.table("conversations").update({"title": title}).eq("id", data.conversation_id).execute()
+            print(f"🧠 Auto-generated conversation title: {title}")
+        except Exception as e:
+            print(f"⚠️ Failed to generate title: {e}")
+'''
     # 2️⃣ Fetch client info
     convo_result = (
         supabase.table("conversations")
@@ -140,7 +158,7 @@ def create_message(data: MessageCreate):
         "user_id": user_id,
         "role": "assistant",
         "content": {"text": assistant_text},
-        "tokens": None,
+        "tokens": count_tokens(assistant_text),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     supabase.table("messages").insert(assistant_msg).execute()

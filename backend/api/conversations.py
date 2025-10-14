@@ -24,7 +24,7 @@ def create_conversation(data: ConversationCreate):
         "id": str(uuid4()),
         "user_id": user_id,
         "client_id": client_id,
-        "title": f"Conversation with client {client_id}",
+        "title": "Untitled Conversation",
         "created_at": datetime.now(timezone.utc).isoformat()
     }
 
@@ -37,8 +37,7 @@ def create_conversation(data: ConversationCreate):
 
 
 @router.get("/{user_id}")
-def list_conversations(user_id: str):
-    """Fetch all conversations for a given user."""
+def get_conversations(user_id: str):
     result = (
         supabase.table("conversations")
         .select("*")
@@ -46,4 +45,44 @@ def list_conversations(user_id: str):
         .order("created_at", desc=True)
         .execute()
     )
-    return {"total": len(result.data), "conversations": result.data}
+    return {"conversations": result.data}
+
+
+'''
+@router.get("/{user_id}")
+def list_conversations(user_id: str):
+    """Fetch all conversations for a given user and delete any that have no messages."""
+    # 1️⃣ Get all conversations
+    result = (
+        supabase.table("conversations")
+        .select("id, title, created_at, client_id, user_id")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    conversations = result.data or []
+
+    # 2️⃣ Track empty conversations
+    empty_convos = []
+
+    for convo in conversations:
+        msg_check = (
+            supabase.table("messages")
+            .select("id", count="exact")
+            .eq("conversation_id", convo["id"])
+            .execute()
+        )
+
+        # Supabase returns count in msg_check.count
+        if getattr(msg_check, "count", 0) == 0:
+            empty_convos.append(convo["id"])
+
+    # 3️⃣ Delete empty conversations
+    for convo_id in empty_convos:
+        supabase.table("conversations").delete().eq("id", convo_id).execute()
+
+    # 4️⃣ Return only active conversations
+    active_convos = [c for c in conversations if c["id"] not in empty_convos]
+
+    return {"total": len(active_convos), "conversations": active_convos}
+'''
