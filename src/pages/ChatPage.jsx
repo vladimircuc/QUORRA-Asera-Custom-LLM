@@ -48,8 +48,8 @@ export default function ChatPage({mode, setMode}) {
 
       const data = await response.json();
 
-      setAllConversations((prev) => [...prev, data]);
-      setSelectedConversation(data);
+      setAllConversations((prev) => [...prev, data.conversation]);
+      setSelectedConversation(data.conversation);
 
       } catch (error) {
       console.error("Error creating conversation:", error);
