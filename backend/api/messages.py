@@ -43,7 +43,6 @@ def create_message(data: MessageCreate):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     supabase.table("messages").insert(user_msg).execute()
-    '''
     msg_count = (
         supabase.table("messages")
         .select("id", count="exact")
@@ -59,7 +58,7 @@ def create_message(data: MessageCreate):
             print(f"🧠 Auto-generated conversation title: {title}")
         except Exception as e:
             print(f"⚠️ Failed to generate title: {e}")
-'''
+
     # 2️⃣ Fetch client info
     convo_result = (
         supabase.table("conversations")

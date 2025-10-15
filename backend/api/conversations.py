@@ -36,19 +36,7 @@ def create_conversation(data: ConversationCreate):
     return {"status": "success", "conversation": result.data[0]}
 
 
-@router.get("/{user_id}")
-def get_conversations(user_id: str):
-    result = (
-        supabase.table("conversations")
-        .select("*")
-        .eq("user_id", user_id)
-        .order("created_at", desc=True)
-        .execute()
-    )
-    return {"conversations": result.data}
 
-
-'''
 @router.get("/{user_id}")
 def list_conversations(user_id: str):
     """Fetch all conversations for a given user and delete any that have no messages."""
@@ -85,4 +73,3 @@ def list_conversations(user_id: str):
     active_convos = [c for c in conversations if c["id"] not in empty_convos]
 
     return {"total": len(active_convos), "conversations": active_convos}
-'''
