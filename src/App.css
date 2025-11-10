@@ -11,8 +11,8 @@
 }
 
 [theme="dark"] {
-  --slate: white;
-  --black: #EAEAEA;
+  --slate: #EAEAEA;
+  --black: white;
   --white: #0a0a0a;
 }
   [theme="dark"] .highlight:hover{
