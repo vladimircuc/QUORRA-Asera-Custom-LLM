@@ -33,10 +33,6 @@ def maybe_update_summary(conversation_id: str):
     Compresses summary if it grows too large.
     """
 
-    print("\n===============================")
-    print(f"🧩 Checking summarization for conversation: {conversation_id}")
-    print("===============================\n")
-
     # 1️⃣ Fetch all messages
     messages_res = (
         supabase.table("messages")
@@ -49,15 +45,11 @@ def maybe_update_summary(conversation_id: str):
     total_msgs = len(messages)
 
     if total_msgs == 0:
-        print("⚠️ No messages found for conversation.")
         return
 
     # 2️⃣ Compute token usage for all messages
     convo_text = "\n".join(f"{m['role']}: {m['content']['text']}" for m in messages)
     total_tokens = count_tokens(convo_text)
-
-    print(f"📊 Total messages: {total_msgs}")
-    print(f"📊 Estimated tokens in conversation: {total_tokens}")
 
     if total_tokens < TRIGGER_TOKENS:
         print(f"✅ Under {TRIGGER_TOKENS} tokens, skipping summarization.")
