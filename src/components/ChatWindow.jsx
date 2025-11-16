@@ -1,14 +1,21 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
+import { supabase } from "../supabaseClient";
 
 export default function ChatWindow({ selectedConversation }) {
   // const [messages, setMessages] = useState([
   //   { role: 'system', content: 'How can I help you today? fewf fwe fwe ewf  ewf we fw ef w e fw ef wef we fwe fw e ew wfe fwe f we f  ggggggggggggggggggggggggg' },
   // ]);
   const [messages, setMessages] = useState([]);
+  const messagesEndRef = useRef(null);
 
+  useEffect(() => {
+  if (messagesEndRef.current) {
+    messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+  }
+  }, [messages]);
 
   useEffect (() => {
     if (!selectedConversation) return;
@@ -33,18 +40,21 @@ export default function ChatWindow({ selectedConversation }) {
 const handleSend = async (input) => {
   if (!input.trim() || !selectedConversation) return;
 
-  setMessages(prev => [
+  setMessages((prev) => [
     ...prev,
-    { role: 'user', content: { text: input } }
+    { role: "user", content: { text: input } },
   ]);
 
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || "11111111-2222-3333-4444-555555555555";
+
     const res = await fetch("http://127.0.0.1:8000/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         conversation_id: selectedConversation.id,
-        user_id: "11111111-2222-3333-4444-555555555555",
+        user_id: userId,
         content: input,
       }),
     });
@@ -52,9 +62,9 @@ const handleSend = async (input) => {
     const data = await res.json();
 
     if (data?.message?.content) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: { text: data.message.content } }
+        { role: "assistant", content: { text: data.message.content } },
       ]);
     }
   } catch (err) {
@@ -73,6 +83,8 @@ const handleSend = async (input) => {
         {messages.map((msg,index) => (
           <ChatMessage key={index} role={msg.role} content={msg.content} />
         ))}
+
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Bar */}

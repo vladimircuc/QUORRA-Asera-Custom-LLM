@@ -4,8 +4,9 @@ import { useEffect, useState} from "react";
 import Sidebar from '../components/Sidebar';
 import ChatWindow from '../components/ChatWindow';
 import Navbar from '../components/Navbar';
+import {supabase} from "../supabaseClient";
 
-export default function ChatPage({mode, setMode}) {
+export default function ChatPage({mode, setMode, userEmail}) {
 
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState();
@@ -22,39 +23,49 @@ export default function ChatPage({mode, setMode}) {
     .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    const fetchAllConversations = async () => {
-      try {
-        const res = await fetch("http://127.0.0.1:8000/conversations/11111111-2222-3333-4444-555555555555");
-        console.log("we got here")
-        const data = await res.json();
-        setAllConversations(data.conversations);
-      } catch (error) {
-        console.error("Error fetching all conversations:", error);
-      }
-    };
-    fetchAllConversations();
-  }, []);
+useEffect(() => {
+  const fetchAllConversations = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || "11111111-2222-3333-4444-555555555555"; // fallback to dummy
 
-  const handleCreateNewChat = async (clientId) => {
-    try{
-      const response = await fetch("http://127.0.0.1:8000/conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: clientId,
-        }),
-      });
+      console.log("Fetching conversations for user:", userId);
 
-      const data = await response.json();
-
-      setAllConversations((prev) => [...prev, data.conversation]);
-      setSelectedConversation(data.conversation);
-
-      } catch (error) {
-      console.error("Error creating conversation:", error);
+      const res = await fetch(`http://127.0.0.1:8000/conversations/${userId}`);
+      const data = await res.json();
+      setAllConversations(data.conversations);
+    } catch (error) {
+      console.error("Error fetching all conversations:", error);
     }
   };
+
+  fetchAllConversations();
+}, []);
+
+
+const handleCreateNewChat = async (clientId) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || "11111111-2222-3333-4444-555555555555";
+
+    const response = await fetch("http://127.0.0.1:8000/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: clientId,
+        user_id: userId,
+      }),
+    });
+
+    const data = await response.json();
+
+    setAllConversations((prev) => [...prev, data.conversation]);
+    setSelectedConversation(data.conversation);
+  } catch (error) {
+    console.error("Error creating conversation:", error);
+  }
+};
+
 
     const handleNewChatClick = () => {
     if (!selectedClient) {
@@ -77,7 +88,7 @@ export default function ChatPage({mode, setMode}) {
 
   return (
     <div className="flex flex-col h-screen">
-      <Navbar />
+      <Navbar userEmail= {userEmail}/>
       <div className="flex flex-1 w-full">
         <Sidebar clients={clients} 
         selectedClient={selectedClient} 

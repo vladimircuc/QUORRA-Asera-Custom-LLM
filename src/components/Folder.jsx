@@ -39,7 +39,7 @@ export default function Folder({ conversation, onSelectedConversation }) {
                   <p className={`tags ${statusColor(chat.client_status)}`}>{chat.client_status}</p>
                 </div>
               </div>
-              <p>{chat.title}</p>
+              <p className="mt-1">{chat.title}</p>
             </div>
           ))}
         </div>
