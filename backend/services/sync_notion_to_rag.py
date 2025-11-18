@@ -42,11 +42,14 @@ MAX_CHARS = 2000     # target chunk size
 OVERLAP   = 300      # overlapping stride
 EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dims; matches vector(1536)
 
+
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+
 def _sha256(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
 
 def _norm_ts(ts: Optional[str]) -> Optional[str]:
     """Normalize ISO timestamps so 'Z' and '+00:00' compare equal at second precision."""
@@ -63,6 +66,7 @@ def _norm_ts(ts: Optional[str]) -> Optional[str]:
         dt = dt.astimezone(timezone.utc)
     return dt.replace(microsecond=0).isoformat()
 
+
 def get_title_from_props(props: Dict[str, Any]) -> str:
     """Find a Notion 'title' property regardless of its display name."""
     for _, val in props.items():
@@ -71,6 +75,16 @@ def get_title_from_props(props: Dict[str, Any]) -> str:
             if arr:
                 return "".join(t.get("plain_text", "") for t in arr).strip()
     return "Untitled"
+
+
+def get_rich_text_prop(props: Dict[str, Any], name: str) -> str:
+    """Return plain text from a Notion rich_text property by name."""
+    p = props.get(name)
+    if isinstance(p, dict) and p.get("type") == "rich_text":
+        arr = p.get("rich_text") or []
+        return "".join(t.get("plain_text", "") for t in arr).strip()
+    return ""
+
 
 def chunk_text(text: str) -> List[str]:
     """Split long text into overlapping character chunks."""
@@ -89,6 +103,7 @@ def chunk_text(text: str) -> List[str]:
         start = max(0, end - OVERLAP)
     return chunks
 
+
 def extract_full_page_text(page_id: str) -> str:
     """
     Concatenate visible rich_text from all blocks in a page.
@@ -106,6 +121,7 @@ def extract_full_page_text(page_id: str) -> str:
                 parts.append(txt)
     return "\n".join(parts).strip()
 
+
 def embed_text(text: str) -> List[float]:
     """Return an embedding vector; return [] on failure (we'll still insert row)."""
     try:
@@ -114,6 +130,7 @@ def embed_text(text: str) -> List[float]:
     except Exception as e:
         print(f"⚠️ Embedding error: {e}")
         return []
+
 
 # ── CLIENT LINKING (Notion relation → Supabase UUID) ──────────────────────────
 def build_client_cache() -> Dict[str, str]:
@@ -134,6 +151,7 @@ def build_client_cache() -> Dict[str, str]:
             cache[npid] = cid
     print(f"🗂️ Loaded {len(cache)} clients into cache")
     return cache
+
 
 def resolve_client_id_from_note(props: Dict[str, Any], client_cache: Dict[str, str]) -> Optional[str]:
     """
@@ -158,6 +176,7 @@ def resolve_client_id_from_note(props: Dict[str, Any], client_cache: Dict[str, s
         print(f"⚠️ No matching client in Supabase for Notion client page {related_page_id}")
     return cid
 
+
 # ── DB HELPERS ────────────────────────────────────────────────────────────────
 def _doc_by_notion_page_id(page_id: str) -> Optional[Dict[str, Any]]:
     res = (
@@ -168,11 +187,19 @@ def _doc_by_notion_page_id(page_id: str) -> Optional[Dict[str, Any]]:
     )
     return res.data[0] if res.data else None
 
+
 def _delete_chunks_for_document(document_id: str) -> None:
     supabase.table("knowledge_chunks").delete().eq("document_id", document_id).execute()
 
-def _insert_chunks(document_id: str, chunks: List[str], title: str, client_id: Optional[str],
-                   category: str, tags: Optional[List[str]]) -> int:
+
+def _insert_chunks(
+    document_id: str,
+    chunks: List[str],
+    title: str,
+    client_id: Optional[str],
+    category: str,
+    tags: Optional[List[str]],
+) -> int:
     rows: List[Dict[str, Any]] = []
     for idx, ch in enumerate(chunks):
         content_to_embed = f"{title}\n\n{ch}".strip() if INCLUDE_TITLE_IN_EMBED else ch
@@ -191,6 +218,7 @@ def _insert_chunks(document_id: str, chunks: List[str], title: str, client_id: O
     if rows:
         supabase.table("knowledge_chunks").insert(rows).execute()
     return len(rows)
+
 
 # ── SUPABASE UPSERT ───────────────────────────────────────────────────────────
 def upsert_document_and_chunks(
@@ -259,6 +287,7 @@ def upsert_document_and_chunks(
     print(f"✅ Synced '{title}' → {n} chunks")
     return document_id, ("updated" if existing else "added")
 
+
 # ── NOTION SYNC ───────────────────────────────────────────────────────────────
 def sync_notion_database(db_id: str, category: str, client_cache: Dict[str, str]) -> Tuple[set, Dict[str, int]]:
     """
@@ -298,7 +327,20 @@ def sync_notion_database(db_id: str, category: str, client_cache: Dict[str, str]
 
             tags = None  # or pull from multi_select
 
-            text = extract_full_page_text(page_id)
+            # Build raw text differently for clients vs others:
+            # Clients: Description column + page body
+            if category == "clients":
+                desc_text = get_rich_text_prop(props, "Description")
+                page_text = extract_full_page_text(page_id)
+                parts: List[str] = []
+                if desc_text:
+                    parts.append(desc_text)
+                if page_text:
+                    parts.append(page_text)
+                text = "\n\n".join(parts).strip()
+            else:
+                text = extract_full_page_text(page_id)
+
             if not text:
                 stats["skipped"] += 1
                 continue
@@ -319,7 +361,7 @@ def sync_notion_database(db_id: str, category: str, client_cache: Dict[str, str]
                 raw_text=text,
                 category=category,
                 last_edited_at=last_edited_time,
-                client_id=client_id,        # <-- now set for meeting_notes
+                client_id=client_id,        # set for meeting_notes, None for others
                 source_url=source_url,
                 tags=tags,
             )
@@ -332,6 +374,7 @@ def sync_notion_database(db_id: str, category: str, client_cache: Dict[str, str]
 
     print(f"🏁 Done: {category} → processed {total} pages (added={stats['added']}, updated={stats['updated']}, skipped={stats['skipped']})")
     return seen_ids, stats
+
 
 # ── PRUNE ORPHANS ─────────────────────────────────────────────────────────────
 def prune_orphan_documents(category: str, seen_notion_ids: set) -> int:
@@ -361,6 +404,7 @@ def prune_orphan_documents(category: str, seen_notion_ids: set) -> int:
     print(f"🧹 Pruned {len(to_delete_ids)} orphan documents in category '{category}'.")
     return len(to_delete_ids)
 
+
 # ── RUN ALL ───────────────────────────────────────────────────────────────────
 def run_full_sync():
     """Sync all configured Notion databases, then prune orphans per category."""
@@ -381,6 +425,7 @@ def run_full_sync():
             )
         except Exception as e:
             print(f"❌ Error syncing '{category}': {e}")
+
 
 if __name__ == "__main__":
     run_full_sync()
