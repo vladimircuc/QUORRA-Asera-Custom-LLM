@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Settings({ mode, setMode }) {
   const [openIndex, setOpenIndex] = useState(null);
@@ -13,7 +14,7 @@ export default function Settings({ mode, setMode }) {
 
   return (
     <div className="w-full max-w-lg mx-auto mt-10 white-text shadow-lg">
-      {/* Appearance Section */}
+      
       <div>
         <button
           onClick={() => toggleAccordion(0)}
@@ -38,7 +39,7 @@ export default function Settings({ mode, setMode }) {
         )}
       </div>
 
-      {/* Example of another section */}
+      
       <div>
         <button
           onClick={() => toggleAccordion(1)}
@@ -50,7 +51,9 @@ export default function Settings({ mode, setMode }) {
 
         {openIndex === 1 && (
           <div className="px-6 py-4 bg-diff">
-            <p>Profile Settings</p>
+            <Link to="/profile">
+              <p>Profile Settings</p>
+            </Link>
           </div>
         )}
       </div>
