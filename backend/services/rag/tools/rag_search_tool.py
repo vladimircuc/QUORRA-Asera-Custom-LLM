@@ -2,10 +2,12 @@
 """
 RAG search tool callable by the LLM.
 
-- Validates category (sops | meeting_notes | clients | GLOBAL fallback)
+- Validates category (sops | meeting_notes | clients | website | GLOBAL fallback)
 - Injects primary client name for meeting_notes if not present
-- Calls your existing api.rag.rag_search (no HTTP) and packs results with services.rag_snippets
-- Returns a compact JSON payload + prints a one-line audit
+- Scopes website queries to the current conversation's client
+- Supports "normal" vs "website_full" modes (for broader website pulls)
+- Calls your internal rag_search (no HTTP) and packs results with rag.snippets
+- Returns a compact JSON payload + prints an audit line
 """
 
 from __future__ import annotations
@@ -15,9 +17,8 @@ import re
 from typing import Any, Dict, List, Optional, Tuple
 
 # Late imports to avoid circular FastAPI imports on module load
-# (we import inside run() too, but type hints here are fine)
-from services.rag_core import RagQuery, rag_search
-from services.rag_snippets import pack_snippets_with_meta
+from services.rag.core import RagQuery, rag_search
+from services.rag.snippets import pack_snippets_with_meta
 
 # -----------------------------
 # Config knobs (easy to tweak)
@@ -27,9 +28,14 @@ TOOL_NAME = "rag_search_tool"
 # Default search behavior (model can override `top_k` and `min_similarity` in args if you let it)
 DEFAULT_TOP_K = int(os.getenv("RAG_TOOL_TOPK", "12"))
 DEFAULT_MIN_SIM = float(os.getenv("RAG_TOOL_MIN_SIM", "0.35"))  # 0..1
-FINAL_SNIPPETS = int(os.getenv("RAG_TOOL_FINAL_SNIPPETS", "6"))  # 5–7 works well
+DEFAULT_FINAL_SNIPPETS = int(os.getenv("RAG_TOOL_FINAL_SNIPPETS", "6"))  # 5–7 works well
 
-ALLOWED_CATEGORIES = {"sops", "meeting_notes", "clients"}
+# "Full website" mode: used when the model explicitly wants a broad view of the site
+WEBSITE_FULL_TOP_K = int(os.getenv("RAG_WEBSITE_FULL_TOPK", "48"))
+WEBSITE_FULL_FINAL_SNIPPETS = int(os.getenv("RAG_WEBSITE_FULL_FINAL_SNIPPETS", "18"))
+
+# Allowed explicit categories; GLOBAL is handled via None
+ALLOWED_CATEGORIES = {"sops", "meeting_notes", "clients", "website"}
 # -----------------------------
 
 
@@ -42,23 +48,50 @@ def get_tool_definition() -> Dict[str, Any]:
             "description": (
                 "Search the knowledge base for relevant snippets. "
                 "Choose a category if you know which corpus to search. "
-                "For cross-cutting topics, set category to GLOBAL (or leave blank) to search everything."
+                "For cross-cutting topics, set category to GLOBAL (or leave blank) to search everything. "
+                "When category is 'website', this tool only searches website content for the primary client "
+                "associated with the current conversation. "
+                "Use 'website_full' mode when you need a broad understanding of the client's entire website "
+                "rather than a narrow answer."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Semantic search query."},
+                    "query": {
+                        "type": "string",
+                        "description": "Semantic search query."
+                    },
                     "category": {
                         "type": "string",
-                        "description": "One of: sops, meeting_notes, clients, GLOBAL (GLOBAL = all categories).",
+                        "description": (
+                            "One of: sops, meeting_notes, clients, website, GLOBAL "
+                            "(GLOBAL = all categories). "
+                            "For website, you only get content for the current conversation's client."
+                        ),
                     },
                     "top_k": {
                         "type": "integer",
-                        "description": f"How many candidates to retrieve (default {DEFAULT_TOP_K}).",
+                        "description": (
+                            f"How many candidates to retrieve (default {DEFAULT_TOP_K}). "
+                            "Typically you do not need to override this; instead use 'mode' "
+                            "to ask for a broader website view."
+                        ),
                     },
                     "min_similarity": {
                         "type": "number",
-                        "description": f"Similarity floor 0..1 (default {DEFAULT_MIN_SIM}).",
+                        "description": (
+                            f"Similarity floor 0..1 (default {DEFAULT_MIN_SIM}). "
+                            "Higher values = stricter relevance."
+                        ),
+                    },
+                    "mode": {
+                        "type": "string",
+                        "description": (
+                            "How broadly to search. "
+                            "'normal' (default) = standard context window. "
+                            "'website_full' = for category 'website', retrieve many more chunks to "
+                            "understand most of the client's website content."
+                        ),
                     },
                 },
                 "required": ["query"],
@@ -70,8 +103,8 @@ def get_tool_definition() -> Dict[str, Any]:
 def _inject_client_name_if_needed(
     query: str,
     category: Optional[str],
-    primary_client_name: Optional[str]
-) -> Tuple[str, bool]:   # <-- return the flag too
+    primary_client_name: Optional[str],
+) -> Tuple[str, bool]:
     """
     If category == meeting_notes and client name isn't in query, inject it.
     Returns (final_query, injected_flag).
@@ -83,7 +116,6 @@ def _inject_client_name_if_needed(
         return query, False
 
     return f"{primary_client_name} {query}".strip(), True
-
 
 
 def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -101,37 +133,59 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
 
     query = (args.get("query") or "").strip()
     category = (args.get("category") or "").strip().lower()
-    top_k = int(args.get("top_k") or DEFAULT_TOP_K)
-    min_sim = float(args.get("min_similarity") or DEFAULT_MIN_SIM)
+    mode = (args.get("mode") or "normal").strip().lower()
+    top_k = DEFAULT_TOP_K
+    min_sim = DEFAULT_MIN_SIM
+
     primary_client_name = tool_context.get("primary_client_name")
+    primary_client_id = tool_context.get("primary_client_id")
 
     planned_category = category or "GLOBAL"
     effective_category = category if category in ALLOWED_CATEGORIES else None  # GLOBAL = None
 
-    
+    # Decide client scoping:
+    # - For website category, we always scope to the primary client id for this conversation.
+    # - For other categories (sops, meeting_notes, clients, GLOBAL), we allow cross-client search.
+    if effective_category == "website" and primary_client_id:
+        client_filter = primary_client_id
+    else:
+        client_filter = None
+
+    # Decide how many snippets to keep based on mode and category
+    if mode == "website_full" and effective_category == "website":
+        # Broad website overview: more candidates, more final snippets
+        top_k_effective = WEBSITE_FULL_TOP_K
+        final_snippets = WEBSITE_FULL_FINAL_SNIPPETS
+        mode_used = "website_full"
+    else:
+        top_k_effective = top_k
+        final_snippets = DEFAULT_FINAL_SNIPPETS
+        mode_used = "normal"
+
     # Client-name injection for meeting_notes
     query_effective, injected = _inject_client_name_if_needed(
         query, category, primary_client_name
     )
-    
 
     # Pre-call audit
     print(
         "🔎 RAG(tool): "
         f"planned={planned_category} | effective={effective_category or 'GLOBAL'} | "
-        f"q={query_effective!r} | top_k={top_k} | floor={int(min_sim*100)}% | "
+        f"mode={mode_used} | client_filter={client_filter or 'ALL'} | "
+        f"q={query_effective!r} | top_k={top_k_effective} | floor={int(min_sim * 100)}% | "
         f"augmented_with_client={injected}"
     )
 
-
     # Call your internal rag_search() (no HTTP)
-    rpc = rag_search(RagQuery(
-        query=query_effective,
-        top_k=top_k,
-        category=effective_category,
-        client_id=None,         # not filtering by client for now
-        min_similarity=0.0,     # we apply the floor in our packer
-    ))
+    rpc = rag_search(
+        RagQuery(
+            query=query_effective,
+            top_k=top_k_effective,
+            category=effective_category,
+            client_id=client_filter,  # <- only non-None for website category
+            min_similarity=0.0,       # we apply the floor in our packer
+        )
+    )
 
     # Normalize rows → dict
     rows = [r.dict() if hasattr(r, "dict") else r for r in rpc.results]
@@ -140,28 +194,34 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
     block, meta = pack_snippets_with_meta(
         rows,
         min_similarity=min_sim,
-        final_count=FINAL_SNIPPETS,
+        final_count=final_snippets,
     )
 
     # Derive extra audit fields
-    titles = []
+    titles: List[str] = []
     for r in rows[:5]:
         t = r.get("document_title") or r.get("doc_title") or ""
         if t:
             titles.append(t)
+
     best_sim = 0.0
     if rows:
-        # rows come in cosine order from Supabase; we filtered afterwards.
-        # best similarity among kept items:
         kept = meta.get("kept_after_floor", 0)
         if kept > 0:
-            best_sim = float(max(r.get("similarity", 0.0) for r in rows if float(r.get("similarity", 0.0)) >= min_sim))
+            best_sim = float(
+                max(
+                    r.get("similarity", 0.0)
+                    for r in rows
+                    if float(r.get("similarity", 0.0)) >= min_sim
+                )
+            )
 
     # Server log, one line
     print(
         "🔎 RAG(tool): "
         f"planned={planned_category} | effective={effective_category or 'GLOBAL'} | "
-        f"q={query_effective!r} | top_k={top_k} | floor={int(min_sim*100)}% | "
+        f"mode={mode_used} | client_filter={client_filter or 'ALL'} | "
+        f"q={query_effective!r} | top_k={top_k_effective} | floor={int(min_sim * 100)}% | "
         f"total={len(rows)} | kept={meta.get('kept_after_floor')} | "
         f"best_sim={best_sim:.4f} | titles={', '.join(titles[:3]) or '-'}"
     )
@@ -171,6 +231,8 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
         "ok": True,
         "category": effective_category or "GLOBAL",
         "query": query_effective,
+        "mode": mode_used,
+        "client_scoped": bool(client_filter),
         "snippets_block": block,            # [RAG_SNIPPETS_BEGIN]…[END]
         "kept": meta.get("kept_after_floor"),
         "included": meta.get("included_count"),
@@ -183,8 +245,10 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
         "meta": {
             "planned_category": planned_category,
             "effective_category": effective_category or "GLOBAL",
+            "mode": mode_used,
+            "client_scoped": bool(client_filter),
             "query": query_effective,
-            "top_k": top_k,
+            "top_k": top_k_effective,
             "floor": min_sim,
             "total": len(rows),
             "kept": meta.get("kept_after_floor"),
@@ -195,7 +259,8 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
         "effective_args": {
             "query": query_effective,
             "category": effective_category or "GLOBAL",
-            "top_k": top_k,
+            "mode": mode_used,
+            "top_k": top_k_effective,
             "min_similarity": min_sim,
         },
     }

@@ -1,7 +1,9 @@
-fastapi
-uvicorn
-python-dotenv
-notion-client
-supabase
-pydantic
-tiktoken
+beautifulsoup4==4.14.2
+fastapi==0.121.3
+notion_client==2.5.0
+openai==2.8.1
+pydantic==2.12.4
+python-dotenv==1.2.1
+Requests==2.32.5
+supabase==2.24.0
+tiktoken==0.12.0

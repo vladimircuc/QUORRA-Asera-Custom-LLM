@@ -8,7 +8,9 @@ from dotenv import load_dotenv
 from notion_client import Client as NotionClient
 from openai import OpenAI
 from supabase_client import supabase
-from services.notion_service import _get_all_blocks  # your existing helper
+from services.notion.client_sync import _get_all_blocks  # your existing helper
+from services.notion.client_sync import refresh_clients_from_notion
+
 
 load_dotenv()
 
@@ -407,16 +409,42 @@ def prune_orphan_documents(category: str, seen_notion_ids: set) -> int:
 
 # ── RUN ALL ───────────────────────────────────────────────────────────────────
 def run_full_sync():
-    """Sync all configured Notion databases, then prune orphans per category."""
-    # Build the client cache once (Notion client page id → Supabase client UUID)
+    """
+    Full sync:
+      1) Sync clients table from Notion → Supabase (including website).
+      2) Build client cache (Notion page id → Supabase client UUID).
+      3) Sync each configured Notion DB into knowledge_documents / knowledge_chunks.
+    """
+    # 1) Sync clients first
+    print("=== Sync: clients (Notion → Supabase) ===")
+    try:
+        client_summary = refresh_clients_from_notion()
+        print(
+            f"✅ Clients sync: "
+            f"added={client_summary['added']}, "
+            f"updated={client_summary['updated']}, "
+            f"inactivated={client_summary['inactivated']}"
+        )
+    except Exception as e:
+        print(f"❌ Error syncing clients: {e}")
+        # You can choose to return early here if clients are critical
+        # return
+
+    # 2) Build the client cache once (Notion client page id → Supabase client UUID)
+    print("\n=== Sync: knowledge (Notion DBs → RAG) ===")
     client_cache = build_client_cache()
 
+    # 3) Sync each Notion database configured in NOTION_DATABASE_IDS
     for category, db_id in NOTION_DATABASE_IDS.items():
         if not db_id:
             print(f"⚠️ Skipping '{category}': NOTION_*_DB_ID not set")
             continue
         try:
-            seen, stats = sync_notion_database(db_id, category, client_cache=client_cache)
+            seen, stats = sync_notion_database(
+                db_id,
+                category,
+                client_cache=client_cache,
+            )
             deleted = prune_orphan_documents(category, seen)
             print(
                 f"✅ Sync summary for '{category}': "
@@ -429,3 +457,4 @@ def run_full_sync():
 
 if __name__ == "__main__":
     run_full_sync()
+

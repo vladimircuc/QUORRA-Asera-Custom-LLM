@@ -5,10 +5,10 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from pydantic import BaseModel
 
-from services.gpt_tool_service import generate_gpt_reply_with_tools
-from services.summarization_service import maybe_update_summary
-from services.title_generator import generate_conversation_title
-from services.summarization_service import count_tokens
+from services.llm.gpt_tool_service import generate_gpt_reply_with_tools
+from services.llm.summarization import maybe_update_summary
+from services.llm.title_generator import generate_conversation_title
+from services.llm.summarization import count_tokens
 
 router = APIRouter()
 
@@ -85,7 +85,6 @@ def create_message(data: MessageCreate):
     if not client_result.data:
         raise HTTPException(status_code=404, detail="Client not found")
     client = client_result.data[0]
-
     # 3) Build the client context (QUORRA is internal; cross-client comparisons are allowed).
     products_list = ", ".join(client.get("products") or [])
     client_context = f"""
@@ -99,13 +98,21 @@ You are QUORRA, an internal Asera assistant. You may reference and compare acros
 - Products: {products_list}
 - Service End Date: {client.get('service_end_date')}
 - Description: {client.get('description')}
+- Website: {client.get('website')}
 
 # Retrieval & Grounding Rules
 - If the user asks what happened/what we promised: prefer meeting_notes (when available). If none support the claim, say so briefly and base guidance on SOPs/playbooks.
 - For how-to/process questions: prefer SOPs/playbooks/templates.
 - For adaptation/comparison: you may bring in examples from other clients; clearly name those clients and cite the snippet IDs used.
 - Do not invent numbers or commitments. Only quote metrics or promises that appear in retrieved snippets.
-- When adapting insights to the Primary Client, consider their segment, budget tier, geo, KPIs, and constraints.
+- For client websites, first try the internal 'website' category via rag_search_tool.
+- For client websites:
+  - First use the internal 'website' category via rag_search_tool.
+  - Only use web_fetch_tool if BOTH:
+    (1) the user explicitly asks you to read or check a URL/website, and
+    (2) the domain of that URL appears in the user's latest message.
+  - Do not use web_fetch_tool just because you see a Website field in context.
+- Do not guess or invent URLs.
 """.strip()
 
     # 4) Pull the current running summary (if we’ve created one already).
@@ -138,7 +145,12 @@ You are QUORRA, an internal Asera assistant. You may reference and compare acros
                 "Do NOT print chunk IDs or any '(source: …)' text in your answers. "
                 "If no snippet supports a claim, say so briefly. "
                 "You may call tools (like rag_search_tool) if you truly need more context; "
-                "otherwise answer directly."
+                "otherwise answer directly. "
+                "You may compare across clients using internal data (SOPs, client records, meeting notes). "
+                "However, when using tools to query website content, you only have access to the website "
+                "data for the primary client of this conversation. "
+                "If the user asks for website details about a different client, explain that this chat is "
+                "scoped to the current client and that they should start a separate conversation for that other client."
             ),
         },
         {"role": "system", "content": client_context},
@@ -154,7 +166,12 @@ You are QUORRA, an internal Asera assistant. You may reference and compare acros
     try:
         assistant_text, tool_audit = generate_gpt_reply_with_tools(
             messages,
-            tool_context={"primary_client_name": client.get("name")},
+            tool_context={
+                "primary_client_name": client.get("name"),
+                "primary_client_id": client_id,            
+                "primary_client_website": client.get("website"),
+                "last_user_message": data.content,  
+            },
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"GPT/tool generation failed: {str(e)}")

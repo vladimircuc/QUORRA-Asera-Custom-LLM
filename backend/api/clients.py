@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from supabase_client import supabase
-from services.notion_service import refresh_clients_from_notion
+from services.notion.client_sync import refresh_clients_from_notion
 
 router = APIRouter()
 

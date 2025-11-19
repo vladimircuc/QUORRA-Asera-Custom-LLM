@@ -4,7 +4,7 @@ Tool-calling runner for QUORRA.
 
 - Exposes `generate_gpt_reply_with_tools(messages, tool_context=None)`
 - Gives the model ONE tool for now: `rag_search_tool` (defined in services/tools/rag_search_tool.py)
-- Enforces server guardrails (max tool calls, no source leakage, etc.)
+- Enforces server guardrails (max tool calls, no source leakage, etc. — set to 0 for no cap)
 - Prints an audit trail of tool calls (category, query, counts, best similarity…)
 """
 
@@ -15,15 +15,22 @@ from typing import Any, Dict, List, Optional, Tuple
 from openai import OpenAI
 
 # Register tools
-from services.tools.rag_search_tool import (
+from services.rag.tools.rag_search_tool import (
     TOOL_NAME as RAG_TOOL_NAME,
     get_tool_definition as rag_tool_def,
     run as rag_tool_run,
 )
 
+from services.rag.tools.web_fetch_tool import (   
+    TOOL_NAME as WEB_TOOL_NAME,
+    get_tool_definition as web_tool_def,
+    run as web_tool_run,
+)
+
 # -----------------------------
 # Config knobs (easy to tweak)
 # -----------------------------
+# If MAX_TOOL_CALLS_PER_TURN <= 0 → treat as "no hard cap"
 MAX_TOOL_CALLS_PER_TURN = int(os.getenv("MAX_TOOL_CALLS_PER_TURN", "3"))
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # any tool-capable model
 PRINT_MODEL_DECISION = True  # print what the model *planned* each time
@@ -34,18 +41,26 @@ _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # Tool registry (name → handler)
 _TOOL_REGISTRY = {
     RAG_TOOL_NAME: {
-        "def": rag_tool_def(),  # function schema for OpenAI
-        "run": rag_tool_run,    # python executor
+        "def": rag_tool_def(),   # function schema for OpenAI
+        "run": rag_tool_run,     # python executor
+    },
+    WEB_TOOL_NAME: {             
+        "def": web_tool_def(),
+        "run": web_tool_run,
     },
 }
+
+
 
 def _tool_definitions_for_openai() -> List[Dict[str, Any]]:
     """OpenAI expects a list of tool specs."""
     return [entry["def"] for entry in _TOOLS_IN_USE]
 
+
 # For now we only enable the RAG tool. If you add more, include them here.
 _TOOLS_IN_USE = [
     _TOOL_REGISTRY[RAG_TOOL_NAME],
+    _TOOL_REGISTRY[WEB_TOOL_NAME],  
 ]
 
 
@@ -71,23 +86,42 @@ def generate_gpt_reply_with_tools(
         "error": None,
         "result_meta": {...}  # kept, total, best_similarity, titles…
       }
+
+    If `max_calls <= 0`, no hard cap is enforced (the model can call tools as needed).
     """
     tool_context = tool_context or {}
     audit: List[Dict[str, Any]] = []
 
-    # Small internal rule to the model: you *may* call tools, but only if needed.
-    # Messages coming in from api/messages.py already instruct this, but we add a gentle nudge.
+    # Decide how to phrase the tool policy and what "budget" means
+    if max_calls <= 0:
+        policy_suffix = (
+            "There is no strict upper limit on tool calls this turn, "
+            "but avoid unnecessary or repetitive calls. "
+            "For broad or complex questions (such as understanding a client's full website), "
+            "it's often better to call the RAG tool multiple times with different, focused queries "
+            "instead of relying on a single call."
+        )
+    else:
+        policy_suffix = (
+            f"You can call at most {max_calls} tool times this turn. "
+            "Use as few calls as you can while still answering reliably, "
+            "but for broad or complex questions (such as understanding a client's full website), "
+            "it's reasonable to call the RAG tool multiple times with different, focused queries."
+        )
+
     preface_rule = {
         "role": "system",
         "content": (
             "Tool policy: You may call tools to retrieve evidence. "
             "Use them only if you need more context to answer reliably. "
-            f"You can call at most {max_calls} tool times this turn."
+            + policy_suffix
         ),
     }
+
     messages = [preface_rule, *messages]
 
-    calls_remaining = max_calls
+    # If max_calls <= 0 → no cap: use infinity so the while-loop logic still works.
+    calls_remaining = float("inf") if max_calls <= 0 else max_calls
 
     while True:
         # 1) Ask the model what to do next (answer or tool-call)
@@ -110,13 +144,25 @@ def generate_gpt_reply_with_tools(
         # 3) Otherwise, the model wants to call one or more tools
         tool_calls = msg.tool_calls
         if PRINT_MODEL_DECISION:
-            print(f"🛠  Model requested {len(tool_calls)} tool call(s). "
-                  f"Budget left: {calls_remaining}")
+            budget_str = (
+                "unlimited"
+                if max_calls <= 0
+                else str(calls_remaining)
+            )
+            print(
+                f"🛠  Model requested {len(tool_calls)} tool call(s). "
+                f"Budget left: {budget_str}"
+            )
 
         # We append the model's tool-call message to history first
-        messages.append({"role": "assistant", "content": msg.content or "", "tool_calls": [
-            tc.model_dump() if hasattr(tc, "model_dump") else tc for tc in tool_calls
-        ]})
+        messages.append({
+            "role": "assistant",
+            "content": msg.content or "",
+            "tool_calls": [
+                tc.model_dump() if hasattr(tc, "model_dump") else tc
+                for tc in tool_calls
+            ],
+        })
 
         # Execute each tool call in order
         for tc in tool_calls:
@@ -124,7 +170,10 @@ def generate_gpt_reply_with_tools(
             raw_args = tc.function.arguments or "{}"
 
             # Resolve and run
-            registry_entry = next((t for t in _TOOLS_IN_USE if t["def"]["function"]["name"] == tool_name), None)
+            registry_entry = next(
+                (t for t in _TOOLS_IN_USE if t["def"]["function"]["name"] == tool_name),
+                None,
+            )
             if not registry_entry:
                 # Unknown tool: tell the model it failed and let it decide a new step.
                 err_note = f"Unknown tool '{tool_name}'."
@@ -182,9 +231,10 @@ def generate_gpt_reply_with_tools(
                     "error": str(e),
                 })
 
-            # Decrease the budget after each executed tool
+            # Decrease the budget after each executed tool.
+            # If max_calls <= 0, calls_remaining is infinity, so this never reaches <= 0.
             calls_remaining -= 1
-            if calls_remaining <= 0:
+            if max_calls > 0 and calls_remaining <= 0:
                 print("⏳ Tool budget reached. Asking model to finish with available info.")
                 messages.append({
                     "role": "system",
