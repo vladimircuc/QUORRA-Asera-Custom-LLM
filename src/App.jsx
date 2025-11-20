@@ -13,6 +13,11 @@ import './App.css';
 function App() {
   const [mode, setMode] = useState("light");
   const [user, setUser] = useState(null);
+  
+  async function refreshUser() {
+  const { data } = await supabase.auth.getUser();
+  setUser(data.user);
+  }
 
   useEffect(() => {
     document.documentElement.setAttribute("theme", mode);
@@ -38,10 +43,10 @@ function App() {
     <Routes>
       {user ? (
         <>
-          <Route path="/" element={<ChatPage mode={mode} setMode={setMode} userEmail={userEmail} />} />
+          <Route path="/" element={<ChatPage mode={mode} setMode={setMode} user={user} />} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/settings" element={<SettingsPage mode={mode} setMode={setMode} userEmail={userEmail}/>} />
-          <Route path="/profile" element={<ProfilePage userEmail={userEmail}/>}></Route>
+          <Route path="/settings" element={<SettingsPage mode={mode} setMode={setMode} user={user}/>} />
+          <Route path="/profile" element={<ProfilePage user={user} refreshUser={refreshUser}/>}></Route>
           <Route path="*" element={<Navigate to="/" />} />
         </>
       ) : (

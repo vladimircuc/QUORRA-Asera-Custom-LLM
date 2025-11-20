@@ -4,13 +4,13 @@ import Profile from "../components/profile";
 // Just made this for a future light mode button
 // and potentially profile settings changes?
 
-export default function ProfilePage({userEmail}) {
+export default function ProfilePage({user, refreshUser}) {
     
   return (
     <div className="flex flex-col h-screen">
-      <Navbar userEmail= {userEmail}/>
+      <Navbar user= {user}/>
       <div className="flex flex-col grow bg-main">
-        <Profile/>
+        <Profile user={user} refreshUser={refreshUser}/>
       </div>
     </div>
   )

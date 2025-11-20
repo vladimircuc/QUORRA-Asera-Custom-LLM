@@ -6,7 +6,7 @@ import ChatWindow from '../components/ChatWindow';
 import Navbar from '../components/Navbar';
 import {supabase} from "../supabaseClient";
 
-export default function ChatPage({mode, setMode, userEmail}) {
+export default function ChatPage({mode, setMode, user}) {
 
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState();
@@ -86,9 +86,15 @@ const handleCreateNewChat = async (clientId) => {
     setSelectedConversation(conversation);
   }
 
+  const updatedTitle = (id, newTitle) => {
+    setAllConversations(prev =>
+      prev.map(conv => conv.id === id ? {...conv, title: newTitle}:conv)
+      );
+  }
+
   return (
     <div className="flex flex-col h-screen">
-      <Navbar userEmail= {userEmail}/>
+      <Navbar user = {user}/>
       <div className="flex flex-1 w-full">
         <Sidebar clients={clients} 
         selectedClient={selectedClient} 
@@ -99,7 +105,7 @@ const handleCreateNewChat = async (clientId) => {
         onSelectedConversation = {handleConversationClick}
         onNewChatClick={handleNewChatClick}
         />
-        <ChatWindow selectedConversation={selectedConversation}/>
+        <ChatWindow selectedConversation={selectedConversation} updatedTitle={updatedTitle}/>
       </div>
  {showClientPopup && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-center">

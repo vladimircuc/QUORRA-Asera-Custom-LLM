@@ -8,7 +8,6 @@ export default function Sidebar({clients, selectedClient, setSelectedClient, mod
   // Conversation is either allConversations or filtered
   // based on whether a client has been chosen or not
   const [conversation, setConversation] = useState([]);
-  
 
   useEffect(() => {
     

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 
-export default function Popout({ userEmail }) {
+export default function Popout({ user }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -39,7 +39,7 @@ export default function Popout({ userEmail }) {
         <div className="flex flex-col gap-4">
           <nav className="flex flex-col gap-2 text-lg py-4">
             {/* Render the logout if loggedout */}
-            {userEmail ? (
+            {user ? (
               <button
                 onClick={handleLogout}
                 className="text-white hover:bg-red-500 shadow p-2 text-left"

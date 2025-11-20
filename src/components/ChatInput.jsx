@@ -14,7 +14,7 @@ export default function ChatInput({ onSend }) {
       <div className="flex gap-2 m-auto pt-2 w-full max-w-4xl">
         <input
           type="text"
-          className="flex-1 min-w-0 p-3 rounded bg-diff text-white placeholder-gray-400 outline-none"
+          className="flex-1 min-w-0 p-3 rounded bg-diff white-text placeholder-gray-400 outline-none"
           placeholder="Send a message..."
           value={input}
           onChange={(e) => setInput(e.target.value)}

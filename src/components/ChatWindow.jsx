@@ -4,18 +4,19 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { supabase } from "../supabaseClient";
 
-export default function ChatWindow({ selectedConversation }) {
+export default function ChatWindow({ selectedConversation, updatedTitle }) {
   // const [messages, setMessages] = useState([
   //   { role: 'system', content: 'How can I help you today? fewf fwe fwe ewf  ewf we fw ef w e fw ef wef we fwe fw e ew wfe fwe f we f  ggggggggggggggggggggggggg' },
   // ]);
   const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
   if (messagesEndRef.current) {
     messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
   }
-  }, [messages]);
+  }, [messages, loading]);
 
   useEffect (() => {
     if (!selectedConversation) return;
@@ -40,15 +41,16 @@ export default function ChatWindow({ selectedConversation }) {
 const handleSend = async (input) => {
   if (!input.trim() || !selectedConversation) return;
 
-  setMessages((prev) => [
+  setMessages(prev => [
     ...prev,
-    { role: "user", content: { text: input } },
+    { role: "user", content: { text: input } }
   ]);
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || "11111111-2222-3333-4444-555555555555";
 
+    setLoading(true);
     const res = await fetch("http://127.0.0.1:8000/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -59,14 +61,30 @@ const handleSend = async (input) => {
       }),
     });
 
-    const data = await res.json();
 
+  const data = await res.json();
+
+  
     if (data?.message?.content) {
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
-        { role: "assistant", content: { text: data.message.content } },
+        { role: "assistant", content: { text: data.message.content } }
       ]);
+      setLoading(false);
     }
+
+    const convRes = await fetch(`http://127.0.0.1:8000/conversations/${userId}`);
+    const convData = await convRes.json();
+
+    const updated = convData.conversations.find(
+      c => c.id === selectedConversation.id
+    );
+
+    if (updated) {
+      
+      updatedTitle(updated.id, updated.title);
+    }
+
   } catch (err) {
     console.error("Error sending message:", err);
   }
@@ -84,7 +102,12 @@ const handleSend = async (input) => {
           <ChatMessage key={index} role={msg.role} content={msg.content} />
         ))}
 
-        <div ref={messagesEndRef} />
+
+        {loading && (
+            <p className="loader m-auto my-2"></p>
+        )}
+
+        <div className='pb-4' ref={messagesEndRef} />
       </div>
 
       {/* Input Bar */}
