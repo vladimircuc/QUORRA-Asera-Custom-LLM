@@ -1,4 +1,4 @@
-# File: backend/services/sync_notion_to_rag.py
+# File: backend/services/sync/sync_notion_to_rag.py
 import os
 import hashlib
 from datetime import datetime, timezone
@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from notion_client import Client as NotionClient
 from openai import OpenAI
 from supabase_client import supabase
-from services.notion.client_sync import _get_all_blocks  # your existing helper
+from services.notion.meetings import _get_all_blocks 
 from services.notion.client_sync import refresh_clients_from_notion
 
 

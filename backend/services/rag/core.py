@@ -14,6 +14,7 @@ class RagQuery(BaseModel):
     category: Optional[str] = None
     client_id: Optional[str] = None
     min_similarity: float = 0.0
+    conversation_id: Optional[str] = None  
 
 class RagChunk(BaseModel):
     chunk_id: str
@@ -43,6 +44,7 @@ def rag_search(body: RagQuery) -> RagResult:
             "match_count": body.top_k,
             "in_category": body.category,
             "in_client": body.client_id,
+            "in_conversation": body.conversation_id,
         },
     ).execute()
 

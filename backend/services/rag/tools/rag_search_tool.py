@@ -8,6 +8,7 @@ RAG search tool callable by the LLM.
 - Supports "normal" vs "website_full" modes (for broader website pulls)
 - Calls your internal rag_search (no HTTP) and packs results with rag.snippets
 - Returns a compact JSON payload + prints an audit line
+- If the user asks what happened/what we promised: prefer meeting_notes (when available). If none support the claim, say so briefly and base guidance on SOPs/playbooks.
 """
 
 from __future__ import annotations
@@ -35,7 +36,8 @@ WEBSITE_FULL_TOP_K = int(os.getenv("RAG_WEBSITE_FULL_TOPK", "48"))
 WEBSITE_FULL_FINAL_SNIPPETS = int(os.getenv("RAG_WEBSITE_FULL_FINAL_SNIPPETS", "18"))
 
 # Allowed explicit categories; GLOBAL is handled via None
-ALLOWED_CATEGORIES = {"sops", "meeting_notes", "clients", "website"}
+ALLOWED_CATEGORIES = {"sops", "meeting_notes", "clients", "website", "upload"}
+
 # -----------------------------
 
 
@@ -47,6 +49,8 @@ def get_tool_definition() -> Dict[str, Any]:
             "name": TOOL_NAME,
             "description": (
                 "Search the knowledge base for relevant snippets. "
+                "The knowledge base also includes website content for the primary client of this conversation. "
+                "You can use this tool to query website infomration about the current client. "
                 "Choose a category if you know which corpus to search. "
                 "For cross-cutting topics, set category to GLOBAL (or leave blank) to search everything. "
                 "When category is 'website', this tool only searches website content for the primary client "
@@ -64,9 +68,11 @@ def get_tool_definition() -> Dict[str, Any]:
                     "category": {
                         "type": "string",
                         "description": (
-                            "One of: sops, meeting_notes, clients, website, GLOBAL "
+                            "One of: sops, meeting_notes, clients, website, upload, GLOBAL "
                             "(GLOBAL = all categories). "
-                            "For website, you only get content for the current conversation's client."
+                            "For website, you only get content for the current conversation's client. "
+                            "Use 'upload' when you specifically want to search files uploaded in "
+                            "this conversation."
                         ),
                     },
                     "top_k": {
@@ -139,6 +145,7 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
 
     primary_client_name = tool_context.get("primary_client_name")
     primary_client_id = tool_context.get("primary_client_id")
+    conversation_id = tool_context.get("conversation_id")
 
     planned_category = category or "GLOBAL"
     effective_category = category if category in ALLOWED_CATEGORIES else None  # GLOBAL = None
@@ -184,6 +191,7 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
             category=effective_category,
             client_id=client_filter,  # <- only non-None for website category
             min_similarity=0.0,       # we apply the floor in our packer
+            conversation_id=conversation_id,
         )
     )
 
@@ -262,5 +270,6 @@ def run(raw_args: str, *, tool_context: Optional[Dict[str, Any]] = None) -> Dict
             "mode": mode_used,
             "top_k": top_k_effective,
             "min_similarity": min_sim,
+            "conversation_id": conversation_id,
         },
     }

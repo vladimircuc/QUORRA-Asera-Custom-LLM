@@ -35,10 +35,12 @@ def get_tool_definition() -> Dict[str, Any]:
             "name": TOOL_NAME,
             "description": (
                 "Fetch the contents of a specific web page when you have an explicit URL. "
-                "Use this only when you need the latest information from that page. "
+                "DO NOT use this tool unless the client has explicitly provided a URL or domain in their latest message. "
+                "Use this only when the user has explicitly pasted a URL or domain in their latest message "
                 "Prefer internal knowledge (RAG) when it's sufficient. "
                 "Do NOT invent or guess URLs. Only use URLs that the user explicitly mentioned "
                 "in their latest message (for example, a link they pasted or a domain they wrote)."
+                
             ),
             "parameters": {
                 "type": "object",
