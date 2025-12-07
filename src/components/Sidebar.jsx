@@ -3,11 +3,14 @@ import Folder from "./Folder";
 import Mode from "./mode";
 import ClientDropdown from "./ClientDropdown";
 
-export default function Sidebar({clients, selectedClient, setSelectedClient, mode, setMode, allConversations, onSelectedConversation, onNewChatClick}) {
+export default function Sidebar({clients, selectedClient, 
+  setSelectedClient, mode, setMode, allConversations, onSelectedConversation, 
+  onNewChatClick, APILoading, onRenameConversation, onDeleteConversation}) {
 
   // Conversation is either allConversations or filtered
   // based on whether a client has been chosen or not
-  const [conversation, setConversation] = useState([]);
+  const [conversation, setConversation] = useState(null);
+  const [selectedConversation, setSelectedConversation] = useState(null);
 
   useEffect(() => {
     
@@ -43,10 +46,16 @@ export default function Sidebar({clients, selectedClient, setSelectedClient, mod
     <div className="h-125 overflow-y-auto">
       <button
         onClick={onNewChatClick}
-        className="bg-diff highlight rounded px-4 py-2 text-sm"
+        className="bg-diff highlight hover:cursor-pointer rounded px-4 py-2 text-sm"
       >+ New Chat</button>
 
-      <Folder conversation={conversation} onSelectedConversation={onSelectedConversation}/>
+      <Folder conversation={conversation}   onSelectedConversation={(chat) => {
+    onSelectedConversation(chat);    
+    setSelectedConversation(chat);  
+  }} APILoading={APILoading} selectedConversation={selectedConversation}
+    onRename={(chat) => onRenameConversation(chat)}
+    onDelete={(chat) => onDeleteConversation(chat)}
+  />
     </div>
       {/* Add conversation list later */}
     </aside>

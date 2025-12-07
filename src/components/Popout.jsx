@@ -19,8 +19,8 @@ export default function Popout({ user }) {
       {/* Hamburger Button */}
       <button 
         onClick={() => setIsOpen(true)}
-        className="w-10 h-10 bg-sky-500 cursor-pointer rounded-4xl mr-4"
-      ></button>
+        className="w-10 h-10 bg-[var(--black)] text-2xl bg-sky-500 cursor-pointer rounded-4xl mr-4"
+      >☰</button>
 
       {/* Overlay (click to close) */}
       {isOpen && (

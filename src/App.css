@@ -26,6 +26,10 @@
     background-color: var(--primary);
   }
 
+    [theme="dark"] .selected{
+    background-color: #c9c9c9;
+  }
+
 .bg-main{
   background-color: var(--black);
   transition: background-color 0.4s ease;
@@ -51,6 +55,11 @@
 
 .highlight{
   border: 1px solid var(--slate);
+}
+
+.selected{
+  /* border: 2px solid var(--primary); */
+  background-color: #272727;
 }
 
 .white-highlight{

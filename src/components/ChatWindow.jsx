@@ -4,13 +4,14 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { supabase } from "../supabaseClient";
 
-export default function ChatWindow({ selectedConversation, updatedTitle }) {
+export default function ChatWindow({ selectedConversation, updatedTitle, user }) {
   // const [messages, setMessages] = useState([
   //   { role: 'system', content: 'How can I help you today? fewf fwe fwe ewf  ewf we fw ef w e fw ef wef we fwe fw e ew wfe fwe f we f  ggggggggggggggggggggggggg' },
   // ]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const userId = user?.id;
 
   useEffect(() => {
   if (messagesEndRef.current) {
@@ -38,7 +39,30 @@ export default function ChatWindow({ selectedConversation, updatedTitle }) {
     fetchMessages();
   },[selectedConversation]);
 
-const handleSend = async (input) => {
+async function handleSendFiles(formData) {
+  const res = await fetch("http://127.0.0.1:8000/messages/with-files", {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await res.json();
+  console.log("Upload response:", data);
+
+  setMessages(prev => [
+    ...prev,
+    { role: "user", content: { text: formData.get("content") || "(uploaded file)" } }
+  ]);
+
+  if (data?.message?.content) {
+    setMessages(prev => [
+      ...prev,
+      { role: "assistant", content: { text: data.message.content } }
+    ]);
+  }
+}
+
+
+const handleSendMessage = async (input) => {
   if (!input.trim() || !selectedConversation) return;
 
   setMessages(prev => [
@@ -110,8 +134,14 @@ const handleSend = async (input) => {
         <div className='pb-4' ref={messagesEndRef} />
       </div>
 
-      {/* Input Bar */}
-      <ChatInput onSend={handleSend}/>
+      <div className={`
+      transition-transform duration-500 w-full
+      ${messages.length === 0 ? "translate-y-[-40vh]" : "translate-y-0"}
+    `}>
+        {/* Input Bar */}
+        <ChatInput onSend={handleSendMessage} onSendFiles={handleSendFiles}  conversationId={selectedConversation.id}
+  userId={userId}/>
+      </div>
     </main>
   );
 }

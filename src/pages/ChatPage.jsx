@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import ChatWindow from '../components/ChatWindow';
 import Navbar from '../components/Navbar';
 import {supabase} from "../supabaseClient";
+import Rename from "../components/Rename";
 
 export default function ChatPage({mode, setMode, user}) {
 
@@ -13,8 +14,63 @@ export default function ChatPage({mode, setMode, user}) {
   const [allConversations, setAllConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [showClientPopup, setShowClientPopup] = useState(false);
+  const [APILoading, setAPILoading] = useState(true);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState(null);
 
 
+
+const handleDeleteConversation = async (conversation) => {
+  try {
+    await fetch(`http://127.0.0.1:8000/conversations/${conversation.id}`, {
+      method: "DELETE",
+    });
+
+    setAllConversations(prev =>
+      prev.filter(c => c.id !== conversation.id)
+    );
+
+    if (selectedConversation?.id === conversation.id) {
+      setSelectedConversation(null);
+    }
+
+  } catch (err) {
+    console.error("Error deleting conversation:", err);
+  }
+};
+
+
+const handleRenameConversation = async (conversation, newTitle) => {
+  try {
+    await fetch(`http://127.0.0.1:8000/conversations/${conversation.id}/title`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: newTitle })
+    });
+
+    // Update state WITHOUT re-fetch (chat suggested)
+    setAllConversations(prev =>
+      prev.map(c =>
+        c.id === conversation.id ? { ...c, title: newTitle } : c
+      )
+    );
+
+    if (selectedConversation?.id === conversation.id) {
+      setSelectedConversation(prev => ({
+        ...prev,
+        title: newTitle
+      }));
+    }
+
+  } catch (err) {
+    console.error("Rename failed:", err);
+  }
+};
+
+const openRenameModal = (conversation) => {
+  setRenameTarget(conversation);
+  setIsRenameOpen(true);
+};
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/clients")
@@ -34,8 +90,10 @@ useEffect(() => {
       const res = await fetch(`http://127.0.0.1:8000/conversations/${userId}`);
       const data = await res.json();
       setAllConversations(data.conversations);
+      setAPILoading(false);
     } catch (error) {
       console.error("Error fetching all conversations:", error);
+      setAPILoading(false);
     }
   };
 
@@ -104,8 +162,17 @@ const handleCreateNewChat = async (clientId) => {
         allConversations = {allConversations}
         onSelectedConversation = {handleConversationClick}
         onNewChatClick={handleNewChatClick}
+        APILoading={APILoading}
+        onRenameConversation={openRenameModal} 
+        onDeleteConversation={handleDeleteConversation} 
         />
-        <ChatWindow selectedConversation={selectedConversation} updatedTitle={updatedTitle}/>
+        <Rename
+        isOpen={isRenameOpen}
+        onClose={() => setIsRenameOpen(false)}
+        conversation={renameTarget}
+        onRename={(newTitle) => handleRenameConversation(renameTarget, newTitle)}
+      />
+        <ChatWindow selectedConversation={selectedConversation} updatedTitle={updatedTitle} user={user}/>
       </div>
  {showClientPopup && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-center">

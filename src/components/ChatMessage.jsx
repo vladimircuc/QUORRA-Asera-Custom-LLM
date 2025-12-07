@@ -1,15 +1,21 @@
+import ReactMarkdown from "react-markdown";
+
 export default function ChatMessage({ role, content }) {
   const isUser = role === 'user';
 
   return (
     <div
-      className={`py-4 px-9 rounded-lg max-w-[80%] whitespace-pre-wrap break-words ${
+      className={`py-3 px-6 rounded-lg max-w-[80%] whitespace-pre-wrap break-words ${
         isUser
           ? 'bg-accent white-text self-end ml-auto'
           : 'bg-diff white-text self-start mr-auto'
       }`}
     >
-      {content.text}
+      <div className="prose prose-invert">
+      <ReactMarkdown>
+        {content.text}
+      </ReactMarkdown>
+      </div>
     </div>
   );
 }

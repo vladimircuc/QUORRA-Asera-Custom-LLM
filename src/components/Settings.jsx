@@ -18,7 +18,7 @@ export default function Settings({ mode, setMode }) {
       <div>
         <button
           onClick={() => toggleAccordion(0)}
-          className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold highlight transition"
+          className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold highlight hover:cursor-pointer transition"
         >
           <span>Appearance</span>
           <span>{openIndex === 0 ? "-" : "+"}</span>
@@ -30,7 +30,7 @@ export default function Settings({ mode, setMode }) {
               <span>Theme: {mode === "light" ? "Light" : "Dark"}</span>
               <button
                 onClick={handleThemeToggle}
-                className="bg-sky-500 hover:bg-sky-600 text-white px-3 py-1 rounded-lg transition"
+                className="bg-sky-500 hover:bg-sky-600 text-white px-3 py-1 rounded-lg transition hover:cursor-pointer"
               >
                 Toggle
               </button>
@@ -43,7 +43,7 @@ export default function Settings({ mode, setMode }) {
       <div>
         <button
           onClick={() => toggleAccordion(1)}
-          className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold highlight transition"
+          className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold highlight transition hover:cursor-pointer"
         >
           <span>Profile</span>
           <span>{openIndex === 1 ? "-" : "+"}</span>
