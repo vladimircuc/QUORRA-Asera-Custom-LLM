@@ -2,6 +2,8 @@ import ReactMarkdown from "react-markdown";
 
 export default function ChatMessage({ role, content }) {
   const isUser = role === 'user';
+  // console.log("ChatMessage content:", content);
+  
 
   return (
     <div
@@ -12,9 +14,11 @@ export default function ChatMessage({ role, content }) {
       }`}
     >
       <div className="prose prose-invert">
-      <ReactMarkdown>
-        {content.text}
-      </ReactMarkdown>
+<ReactMarkdown>
+  {typeof content === "string"
+    ? content
+    : content?.text || content?.raw_text || ""}
+</ReactMarkdown>
       </div>
     </div>
   );

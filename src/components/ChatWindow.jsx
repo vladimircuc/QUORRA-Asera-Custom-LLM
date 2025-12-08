@@ -10,6 +10,7 @@ export default function ChatWindow({ selectedConversation, updatedTitle, user })
   // ]);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [animateInput, setAnimateInput] = useState(false);
   const messagesEndRef = useRef(null);
   const userId = user?.id;
 
@@ -29,6 +30,12 @@ export default function ChatWindow({ selectedConversation, updatedTitle, user })
       const data = await response.json();
       console.log("Message", data);
       setMessages(Array.isArray(data.messages) ? data.messages : []);
+      if (data.messages?.length === 0){
+        setAnimateInput(true);
+      }
+      else{
+        setAnimateInput(false);
+      }
       console.log("Fetched Messages:", data.messages);
       }catch (error) {
         console.error(error);
@@ -40,6 +47,23 @@ export default function ChatWindow({ selectedConversation, updatedTitle, user })
   },[selectedConversation]);
 
 async function handleSendFiles(formData) {
+
+  if (messages.length === 0) {
+    setAnimateInput(true);
+  }
+
+ if (!formData.get("content")) {
+    formData.append("content", "[file upload]");
+  }
+
+  const fileNames = [...formData.getAll("files")].map(f => f.name);
+  const displayText = fileNames.length ? fileNames.join(", ") : "(uploaded file)";
+
+  setMessages(prev => [
+    ...prev,
+    { role: "user", content: displayText }
+  ]);
+
   const res = await fetch("http://127.0.0.1:8000/messages/with-files", {
     method: "POST",
     body: formData,
@@ -48,26 +72,26 @@ async function handleSendFiles(formData) {
   const data = await res.json();
   console.log("Upload response:", data);
 
-  setMessages(prev => [
-    ...prev,
-    { role: "user", content: { text: formData.get("content") || "(uploaded file)" } }
-  ]);
-
   if (data?.message?.content) {
     setMessages(prev => [
       ...prev,
-      { role: "assistant", content: { text: data.message.content } }
+      { role: "assistant", content: data.message.content }
     ]);
   }
+  
 }
 
 
 const handleSendMessage = async (input) => {
   if (!input.trim() || !selectedConversation) return;
 
+  if (messages.length === 0) {
+    setAnimateInput(true);
+  }
+
   setMessages(prev => [
     ...prev,
-    { role: "user", content: { text: input } }
+    { role: "user", content: input }
   ]);
 
   try {
@@ -87,12 +111,12 @@ const handleSendMessage = async (input) => {
 
 
   const data = await res.json();
-
+  console.log("Normal Response",data);
   
     if (data?.message?.content) {
       setMessages(prev => [
         ...prev,
-        { role: "assistant", content: { text: data.message.content } }
+        { role: "assistant", content: data.message.content }
       ]);
       setLoading(false);
     }
@@ -135,7 +159,8 @@ const handleSendMessage = async (input) => {
       </div>
 
       <div className={`
-      transition-transform duration-500 w-full
+      w-full
+      ${animateInput ? "transition-transform duration-500" : "" }
       ${messages.length === 0 ? "translate-y-[-40vh]" : "translate-y-0"}
     `}>
         {/* Input Bar */}
