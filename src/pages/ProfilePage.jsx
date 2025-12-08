@@ -1,6 +1,6 @@
-// src/pages/SettingsPage.jsx
+// src/pages/ProfilePage.jsx
 import Navbar from "../components/Navbar";
-import Profile from "../components/profile";
+import Profile from "../components/Profile";
 // Just made this for a future light mode button
 // and potentially profile settings changes?
 
