@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 // Toggle Component
-function Toggle({ enabled, onChange, label, description, icon }) {
+function Toggle({ enabled, onChange, label, description, icon}) {
   return (
     <div className="flex items-start justify-between p-4 rounded-lg bg-main highlight hover:border-[#3AB3FF]/50 transition-colors">
       <div className="flex items-start gap-3 flex-1">
@@ -36,7 +36,7 @@ function Toggle({ enabled, onChange, label, description, icon }) {
   );
 }
 
-export default function Settings({ mode, setMode }) {
+export default function Settings({ mode, setMode, setShowTimestamps, showTimestamps , compactMode, setCompactMode}) {
   const [openIndex, setOpenIndex] = useState(null);
   
   // Notification settings state
@@ -45,8 +45,8 @@ export default function Settings({ mode, setMode }) {
   const [productUpdates, setProductUpdates] = useState(true);
   
   // Chat experience settings state
-  const [compactMode, setCompactMode] = useState(false);
-  const [showTimestamps, setShowTimestamps] = useState(true);
+  // const [compactMode, setCompactMode] = useState(false);
+  // const [showTimestamps, setShowTimestamps] = useState(true);
   const [highlightCode, setHighlightCode] = useState(true);
 
   const toggleAccordion = (index) => {

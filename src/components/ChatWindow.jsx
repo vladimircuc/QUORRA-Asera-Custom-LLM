@@ -4,7 +4,7 @@ import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import { supabase } from "../supabaseClient";
 
-export default function ChatWindow({ selectedConversation, updatedTitle, user }) {
+export default function ChatWindow({ selectedConversation, updatedTitle, user, showTimestamps, compactMode}) {
   // const [messages, setMessages] = useState([
   //   { role: 'system', content: 'How can I help you today? fewf fwe fwe ewf  ewf we fw ef w e fw ef wef we fwe fw e ew wfe fwe f we f  ggggggggggggggggggggggggg' },
   // ]);
@@ -78,7 +78,6 @@ async function handleSendFiles(formData) {
       { role: "assistant", content: data.message.content }
     ]);
   }
-  
 }
 
 
@@ -91,7 +90,7 @@ const handleSendMessage = async (input) => {
 
   setMessages(prev => [
     ...prev,
-    { role: "user", content: input }
+    { role: "user", content: input, created_at: new Date().toISOString() }
   ]);
 
   try {
@@ -111,12 +110,12 @@ const handleSendMessage = async (input) => {
 
 
   const data = await res.json();
-  console.log("Normal Response",data);
+  console.log("Normal Response mehehe",data);
   
     if (data?.message?.content) {
       setMessages(prev => [
         ...prev,
-        { role: "assistant", content: data.message.content }
+        { role: "assistant", content: data.message.content, created_at: data.message.created_at || new Date().toISOString() }
       ]);
       setLoading(false);
     }
@@ -145,9 +144,9 @@ const handleSendMessage = async (input) => {
   return (
     <main className="flex flex-1 flex-col p-6 bg-main text-white">
       {/* Message Feed */}
-      <div className="h-142 overflow-y-auto p-4 space-y-4 flex flex-col">
+      <div className={`${compactMode ? "space-y-2" : "space-y-4"} h-142 overflow-y-auto p-4 flex flex-col`}>
         {messages.map((msg,index) => (
-          <ChatMessage key={index} role={msg.role} content={msg.content} />
+          <ChatMessage key={index} role={msg.role} content={msg.content} time={msg.created_at} showTimestamps={showTimestamps} compactMode={compactMode}/>
         ))}
 
 

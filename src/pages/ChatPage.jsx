@@ -7,7 +7,7 @@ import Navbar from '../components/Navbar';
 import {supabase} from "../supabaseClient";
 import Rename from "../components/Rename";
 
-export default function ChatPage({mode, setMode, user}) {
+export default function ChatPage({mode, setMode, user, showTimestamps, compactMode}) {
 
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState();
@@ -165,6 +165,7 @@ const handleCreateNewChat = async (clientId) => {
         APILoading={APILoading}
         onRenameConversation={openRenameModal} 
         onDeleteConversation={handleDeleteConversation} 
+        selectedConversation={selectedConversation}  
         />
         <Rename
         isOpen={isRenameOpen}
@@ -172,7 +173,7 @@ const handleCreateNewChat = async (clientId) => {
         conversation={renameTarget}
         onRename={(newTitle) => handleRenameConversation(renameTarget, newTitle)}
       />
-        <ChatWindow selectedConversation={selectedConversation} updatedTitle={updatedTitle} user={user}/>
+        <ChatWindow selectedConversation={selectedConversation} updatedTitle={updatedTitle} user={user} showTimestamps={showTimestamps} compactMode={compactMode}/>
       </div>
  {showClientPopup && (
         <div className="fixed inset-0 bg-black/80 flex justify-center items-center">

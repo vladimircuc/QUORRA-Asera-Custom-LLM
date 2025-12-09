@@ -13,7 +13,8 @@ import './App.css';
 function App() {
   const [mode, setMode] = useState("light");
   const [user, setUser] = useState(null);
-  
+  const [showTimestamps, setShowTimestamps] = useState(true);
+  const [compactMode, setCompactMode] = useState(false);
   async function refreshUser() {
   const { data } = await supabase.auth.getUser();
   setUser(data.user);
@@ -43,9 +44,9 @@ function App() {
     <Routes>
       {user ? (
         <>
-          <Route path="/" element={<ChatPage mode={mode} setMode={setMode} user={user} />} />
+          <Route path="/" element={<ChatPage mode={mode} setMode={setMode} user={user} showTimestamps={showTimestamps} compactMode={compactMode}/>} />
           <Route path="/account" element={<AccountPage />} />
-          <Route path="/settings" element={<SettingsPage mode={mode} setMode={setMode} user={user}/>} />
+          <Route path="/settings" element={<SettingsPage mode={mode} setMode={setMode} user={user} setShowTimestamps={setShowTimestamps} showTimestamps={showTimestamps} compactMode={compactMode} setCompactMode={setCompactMode}/>} />
           <Route path="/profile" element={<ProfilePage user={user} refreshUser={refreshUser}/>}></Route>
           <Route path="*" element={<Navigate to="/" />} />
         </>

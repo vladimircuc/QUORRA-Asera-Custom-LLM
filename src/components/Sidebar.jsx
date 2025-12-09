@@ -5,13 +5,11 @@ import ClientDropdown from "./ClientDropdown";
 
 export default function Sidebar({clients, selectedClient, 
   setSelectedClient, mode, setMode, allConversations, onSelectedConversation, 
-  onNewChatClick, APILoading, onRenameConversation, onDeleteConversation}) {
+  onNewChatClick, APILoading, onRenameConversation, onDeleteConversation, selectedConversation }) {
 
   // Conversation is either allConversations or filtered
   // based on whether a client has been chosen or not
   const [conversation, setConversation] = useState(null);
-  const [selectedConversation, setSelectedConversation] = useState(null);
-
   useEffect(() => {
     
     if (allConversations.length === 0 || clients.length === 0) return;
@@ -50,11 +48,11 @@ export default function Sidebar({clients, selectedClient,
       >+ New Chat</button>
 
       <Folder conversation={conversation}   onSelectedConversation={(chat) => {
-    onSelectedConversation(chat);    
-    setSelectedConversation(chat);  
+    onSelectedConversation(chat);
   }} APILoading={APILoading} selectedConversation={selectedConversation}
     onRename={(chat) => onRenameConversation(chat)}
     onDelete={(chat) => onDeleteConversation(chat)}
+    
   />
     </div>
       {/* Add conversation list later */}
