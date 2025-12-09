@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from services.llm.gpt_tool_service import generate_gpt_reply_with_tools
 from services.llm.summarization import maybe_update_summary, count_tokens
 from services.llm.title_generator import generate_conversation_title
-from services.storage.uploads import upload_conversation_file  
+from services.storage.uploads import upload_conversation_file
 
 router = APIRouter()
 
@@ -38,12 +38,17 @@ def _build_attached_docs_context(history: list[dict]) -> Optional[str]:
     Returns a string to be used as a system message, or None if there are
     no attached docs in this history window.
     """
+    print("[ATTACH_DEBUG] building attached docs context")
+
     if not history:
+        print("[ATTACH_DEBUG] history is empty, nothing to attach")
         return None
 
-    # We expect each history row to have an id
     message_ids = [m["id"] for m in history if "id" in m]
+    print(f"[ATTACH_DEBUG] history message ids: {message_ids}")
+
     if not message_ids:
+        print("[ATTACH_DEBUG] no message ids found in history rows")
         return None
 
     # 1) Fetch links from messages to documents
@@ -54,12 +59,16 @@ def _build_attached_docs_context(history: list[dict]) -> Optional[str]:
         .execute()
     )
     links = links_res.data or []
+    print(f"[ATTACH_DEBUG] message_documents links count: {len(links)}")
+
     if not links:
+        print("[ATTACH_DEBUG] no message_documents rows for these messages")
         return None
 
     # 2) Fetch the document rows
     doc_ids = list({row["document_id"] for row in links})
     if not doc_ids:
+        print("[ATTACH_DEBUG] no document ids collected from links")
         return None
 
     docs_res = (
@@ -69,7 +78,10 @@ def _build_attached_docs_context(history: list[dict]) -> Optional[str]:
         .execute()
     )
     docs = docs_res.data or []
+    print(f"[ATTACH_DEBUG] knowledge_documents rows count: {len(docs)}")
+
     if not docs:
+        print("[ATTACH_DEBUG] no knowledge_documents found for these ids")
         return None
 
     docs_by_id = {d["id"]: d for d in docs}
@@ -92,7 +104,7 @@ def _build_attached_docs_context(history: list[dict]) -> Optional[str]:
         return text[:max_chars] + "... [truncated]"
 
     lines: list[str] = []
-    # Simple char based budget to avoid exploding context
+    # Simple char based budget so we do not explode context
     total_chars_budget = 8000
     used_chars = 0
 
@@ -131,13 +143,20 @@ def _build_attached_docs_context(history: list[dict]) -> Optional[str]:
             break
 
     if not lines:
+        print("[ATTACH_DEBUG] docs_by_msg is non empty but produced no lines")
         return None
 
     attached_docs_context = (
-        "Attached documents from recent messages. "
-        "Use these snippets as high priority context if they are relevant:\n\n"
+        "You have direct access to the extracted text from files recently uploaded in this conversation. "
+        "Treat this text exactly as if the user had pasted it into the chat. "
+        "You may freely read, quote, summarize, and reason about it. "
+        "If the user asks about an uploaded file, answer using this text and do not say that you cannot access the file. "
+        "You do not need to call any tools to read this text, it is already provided here.\n\n"
+        "Attached documents and their content:\n\n"
         + "\n".join(lines)
     )
+
+    print(f"[ATTACH_DEBUG] built attached_docs_context length: {len(attached_docs_context)} chars")
     return attached_docs_context
 
 
@@ -155,7 +174,7 @@ def create_message(data: MessageCreate):
         raise HTTPException(status_code=400, detail="user_id is required")
     user_id = data.user_id
 
-    # 1) Persist the user's message FIRST so the conversation has it in history.
+    # 1) Persist the user's message first so the conversation has it in history.
     user_msg = {
         "id": str(uuid4()),
         "conversation_id": data.conversation_id,
@@ -179,9 +198,9 @@ def create_message(data: MessageCreate):
         try:
             title = generate_conversation_title(data.content)
             supabase.table("conversations").update({"title": title}).eq("id", data.conversation_id).execute()
-            print(f"Auto generated conversation title: {title}")
+            print(f"[TITLE] auto generated conversation title: {title}")
         except Exception as e:
-            print(f"Failed to generate title: {e}")
+            print(f"[TITLE] failed to generate title: {e}")
 
     # 2) Resolve the conversation's primary client (we still allow cross client refs in answers).
     convo_result = (
@@ -214,6 +233,7 @@ def create_message(data: MessageCreate):
     if not client_result.data:
         raise HTTPException(status_code=404, detail="Client not found")
     client = client_result.data[0]
+
     # 3) Build the client context (QUORRA is internal; cross client comparisons are allowed).
     products_list = ", ".join(client.get("products") or [])
     client_context = f"""
@@ -344,16 +364,19 @@ You are QUORRA, an internal Asera assistant. You may reference and compare acros
     try:
         maybe_update_summary(data.conversation_id)
     except Exception as e:
-        print(f"Summary update failed: {e}")
+        print(f"[SUMMARY] update failed: {e}")
 
     # 10) Return
     return {
         "status": "success",
         "message": {"role": "assistant", "content": assistant_text},
         "client": {"name": client.get("name")},
-
-
-        "debug": {"tool_audit": tool_audit},
+        "debug": {
+            "tool_audit": tool_audit,
+            "upload_docs_count": upload_docs_count,
+            "has_uploaded_docs": has_uploaded_docs,
+            "attached_docs_context_preview": attached_docs_context[:500] if attached_docs_context else None,
+        },
     }
 
 
@@ -384,7 +407,7 @@ async def create_message_with_files(
     """
     Create a user message that may include one or more uploaded files.
     - Saves the message in `messages`
-    - Uploads each file to Supabase Storage + creates `knowledge_documents`
+    - Uploads each file to Supabase Storage and creates `knowledge_documents`
       and chunks and embeds it using the SAME pipeline as Notion
     - Links message and documents in `message_documents`
     - Runs the normal GPT + tools pipeline to generate a reply
@@ -600,7 +623,7 @@ You are QUORRA, an internal Asera assistant. You may reference and compare acros
     try:
         maybe_update_summary(conversation_id)
     except Exception as e:
-        print(f"Summary update failed: {e}")
+        print(f"[SUMMARY] update failed: {e}")
 
     return {
         "status": "success",
@@ -609,5 +632,8 @@ You are QUORRA, an internal Asera assistant. You may reference and compare acros
         "debug": {
             "tool_audit": tool_audit,
             "attached_documents": attached_docs,
+            "upload_docs_count": upload_docs_count,
+            "has_uploaded_docs": has_uploaded_docs,
+            "attached_docs_context_preview": attached_docs_context[:500] if attached_docs_context else None,
         },
     }
