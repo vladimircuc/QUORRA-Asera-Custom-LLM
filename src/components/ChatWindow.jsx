@@ -14,11 +14,9 @@ export default function ChatWindow({ selectedConversation, updatedTitle, user, s
   const messagesEndRef = useRef(null);
   const userId = user?.id;
 
-  useEffect(() => {
-  if (messagesEndRef.current) {
-    messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-  }
-  }, [messages, loading]);
+useEffect(() => {
+  messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+}, [messages, loading]);
 
   useEffect (() => {
     if (!selectedConversation) return;
@@ -46,105 +44,106 @@ export default function ChatWindow({ selectedConversation, updatedTitle, user, s
     fetchMessages();
   },[selectedConversation]);
 
-async function handleSendFiles(formData) {
 
-  if (messages.length === 0) {
-    setAnimateInput(true);
-  }
+  async function refreshConversationTitle() {
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id;
 
- if (!formData.get("content")) {
-    formData.append("content", "[file upload]");
-  }
+  const convRes = await fetch(`http://127.0.0.1:8000/conversations/${userId}`);
+  const convData = await convRes.json();
 
-  const fileNames = [...formData.getAll("files")].map(f => f.name);
-  const displayText = fileNames.length ? fileNames.join(", ") : "(uploaded file)";
+  const updated = convData.conversations.find(
+    c => c.id === selectedConversation.id
+  );
 
-  setMessages(prev => [
-    ...prev,
-    { role: "user", content: displayText }
-  ]);
-
-  const res = await fetch("http://127.0.0.1:8000/messages/with-files", {
-    method: "POST",
-    body: formData,
-  });
-
-  const data = await res.json();
-  console.log("Upload response:", data);
-
-  if (data?.message?.content) {
-    setMessages(prev => [
-      ...prev,
-      { role: "assistant", content: data.message.content }
-    ]);
+  if (updated) {
+    updatedTitle(updated.id, updated.title);
   }
 }
 
 
-const handleSendMessage = async (input) => {
-  if (!input.trim() || !selectedConversation) return;
+async function handleSend(input, pendingFiles) {
+  if (!selectedConversation) return;
 
-  if (messages.length === 0) {
-    setAnimateInput(true);
-  }
+  const { data: { user } } = await supabase.auth.getUser();
+  const userId = user?.id ?? "fallback-id";
 
+  const hasText = input.trim().length > 0;
+  const hasFiles = pendingFiles.length > 0;
+
+  if (!hasText && !hasFiles) return;
+
+  // UI update
   setMessages(prev => [
     ...prev,
-    { role: "user", content: input, created_at: new Date().toISOString() }
+    {
+      role: "user",
+      content: hasFiles
+        ? `[files: ${pendingFiles.map(f => f.name).join(", ")}]` + (hasText ? ` - ${input}` : "")
+        : input,
+      created_at: new Date().toISOString(),
+    }
   ]);
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || "11111111-2222-3333-4444-555555555555";
+  setLoading(true);
+  let res, data;
 
-    setLoading(true);
-    const res = await fetch("http://127.0.0.1:8000/messages", {
+  if (hasFiles) {
+    const form = new FormData();
+    form.append("conversation_id", selectedConversation.id);
+    form.append("user_id", userId);
+    form.append("content", input.trim() || "[files only]");
+
+
+
+    pendingFiles.forEach(file => form.append("files", file));
+
+    res = await fetch("http://127.0.0.1:8000/messages/with-files", {
+      method: "POST",
+      body: form,
+    });
+  } else {
+    res = await fetch("http://127.0.0.1:8000/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        conversation_id: selectedConversation.id,
+        conversation_id: selectedConversation.id,   // FIX
         user_id: userId,
         content: input,
-      }),
+      })
     });
-
-
-  const data = await res.json();
-  console.log("Normal Response mehehe",data);
-  
-    if (data?.message?.content) {
-      setMessages(prev => [
-        ...prev,
-        { role: "assistant", content: data.message.content, created_at: data.message.created_at || new Date().toISOString() }
-      ]);
-      setLoading(false);
-    }
-
-    const convRes = await fetch(`http://127.0.0.1:8000/conversations/${userId}`);
-    const convData = await convRes.json();
-
-    const updated = convData.conversations.find(
-      c => c.id === selectedConversation.id
-    );
-
-    if (updated) {
-      
-      updatedTitle(updated.id, updated.title);
-    }
-
-  } catch (err) {
-    console.error("Error sending message:", err);
   }
-};
+
+  data = await res.json();
+
+  await refreshConversationTitle();
+
+  const timestamp = data.message.created_at || new Date().toISOString();
+  if (data?.message?.content) {
+    setMessages(prev => [...prev, {
+      role: "assistant",
+      content: data.message.content,
+      created_at: timestamp
+    }]);
+  }
+  setLoading(false);
+}
+
 
   if (!selectedConversation){
-    return <p className='bg-main flex-1 text-center pt-20 p-4 white-text'>Please select or create a conversation to view</p>
+    return (
+    <div className='bg-main flex flex-1 text-center justify-center items-center'>
+      <div className='items-center bg-diff w-1/2 rounded py-8 px-4 white-text'>
+          <p className='text-[#3AB3FF] text-3xl'>Welcome to QUORRA</p>
+          <p className='text-xl'>Please select or create a conversation to view</p>
+      </div>
+      </div>);
   }
 
   return (
-    <main className="flex flex-1 flex-col p-6 bg-main text-white">
+    <main className="flex flex-1 flex-col px-4 pt-6 pb-2 gap-2 bg-main text-white">
       {/* Message Feed */}
-      <div className={`${compactMode ? "space-y-2" : "space-y-4"} h-142 overflow-y-auto p-4 flex flex-col`}>
+      <div className={`${compactMode ? "space-y-1" : "space-y-4"} h-138 overflow-y-auto p-4 flex flex-col`}>
         {messages.map((msg,index) => (
           <ChatMessage key={index} role={msg.role} content={msg.content} time={msg.created_at} showTimestamps={showTimestamps} compactMode={compactMode}/>
         ))}
@@ -158,13 +157,14 @@ const handleSendMessage = async (input) => {
       </div>
 
       <div className={`
-      w-full
+      w-full m-auto
       ${animateInput ? "transition-transform duration-500" : "" }
       ${messages.length === 0 ? "translate-y-[-40vh]" : "translate-y-0"}
     `}>
         {/* Input Bar */}
-        <ChatInput onSend={handleSendMessage} onSendFiles={handleSendFiles}  conversationId={selectedConversation.id}
-  userId={userId}/>
+        <ChatInput 
+        key={selectedConversation?.id} 
+        onSend={handleSend}/>
       </div>
     </main>
   );

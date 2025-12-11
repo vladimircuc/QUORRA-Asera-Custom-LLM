@@ -20,7 +20,7 @@ export default function ChatMessage({ role, content, time, showTimestamps, compa
     <div
       className={`rounded-lg whitespace-pre-wrap break-words
         
-        ${ compactMode ? 'py-2 px-4 max-w-[90%]' : 'py-3 px-6 max-w-[80%]'}
+        ${ compactMode ? 'py-1 px-4 max-w-[95%] text-sm' : 'py-3 px-6 max-w-[80%]'}
         ${
         isUser
           ? 'bg-accent white-text self-end ml-auto'

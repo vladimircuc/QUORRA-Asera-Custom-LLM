@@ -1,64 +1,92 @@
 import { useRef, useState } from "react";
 
-export default function ChatInput({ onSend, onSendFiles, conversationId, userId }) {
+export default function ChatInput({ onSend }) {
   const [input, setInput] = useState('');
+  const [pendingFiles, setPendingFiles] = useState([]);
   const fileInputRef = useRef(null);
 
-  const handleSubmit = () => {
-    if (!input.trim()) return;
-    onSend(input);
-    setInput("");
+  const handleFileSelect = (e) => {
+    const newFiles = [...e.target.files];
+    setPendingFiles(prev => [...prev, ...newFiles]);
+
+     e.target.value = null;
   };
 
-  const handleFileSelect = async (event) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  const removeFile = (index) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
-    const formData = new FormData();
-    formData.append("conversation_id", conversationId);
-    formData.append("user_id", userId);
-    formData.append("content", input);
+  const handleSubmit = () => {
+    const hasText = input.trim().length > 0;
+    const hasFiles = pendingFiles.length > 0;
+    if (!hasText && !hasFiles) return;
 
-    for (let file of files) {
-      formData.append("files", file);
-    }
-
-    await onSendFiles(formData);
-
-    event.target.value = "";
-    // setInput("");
+    onSend(input, pendingFiles);
+    setInput("");
+    setPendingFiles([]);
   };
 
   return (
-    <div className="flex m-auto mt-2 w-full max-w-4xl min-w-0 rounded bg-diff white-text">
-      <button
-        className="flex p-2 px-4 highlight text-xl rounded hover:cursor-pointer item-center"
-        onClick={() => fileInputRef.current.click()}
-      >
-      {/* <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="white-text h-"> <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" /> </svg> */}
-      +
-      </button>
+    <div className="flex flex-col w-full">
 
-      <input
-        type="file"
-        ref={fileInputRef}
-        multiple
-        style={{ display: "none" }}
-        onChange={handleFileSelect}
-      />
+      {/* FILE PREVIEW */}
+      {pendingFiles.length > 0 && (
+        <div className="flex relative m-auto w-full max-w-4xl min-w-0 gap-2 wrap rounded white-text">
+          {pendingFiles.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-2 bg-[#3AB3FF] px-2 py-1 rounded text-sm"
+            >
+              <span className="truncate max-w-40">{file.name}</span>
+              <span className="opacity-70 text-xs">
+                ({Math.round(file.size / 1024)} KB)
+              </span>
 
-      <input
-        type="text"
-        className="flex-1 pl-4 focus:outline-none"
-        placeholder="Send a message..."
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-      />
+              <button
+                onClick={() => removeFile(index)}
+                className="text-white hover:text-red-500 font-bold"
+              >
+                X
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <button onClick={handleSubmit} className="p-2 px-4 text-2xl white-text highlight">
-        ↑
-      </button>
+      {/* INPUT BAR */}
+      <div className="flex m-auto w-full max-w-4xl min-w-0 rounded bg-diff white-text mt-2">
+        <button
+          className="flex p-2 px-4 highlight text-xl rounded hover:cursor-pointer"
+          onClick={() => fileInputRef.current.click()}
+        >
+          +
+        </button>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          multiple
+          style={{ display: "none" }}
+          onChange={handleFileSelect}
+        />
+
+        <input
+          type="text"
+          className="flex-1 pl-4 focus:outline-none"
+          placeholder="Send a message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        />
+
+        <button
+          onClick={handleSubmit}
+          className="p-2 px-4 text-2xl white-text highlight rounded"
+        >
+          ↑
+        </button>
+      </div>
+
     </div>
   );
 }

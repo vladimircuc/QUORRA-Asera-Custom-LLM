@@ -19,7 +19,7 @@ export default function Folder({ conversation, onSelectedConversation, APILoadin
     return <p className="loader m-auto my-2"></p> 
   }
   if (!APILoading && conversation === null) {
-    return <p className="text-center">Start having coversations by creating a new chat</p>
+    return <p className="text-center pt-10">Start having coversations by creating a new chat</p>
   }
 
   const statusColor = (status) => {
